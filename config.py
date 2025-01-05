@@ -29,6 +29,15 @@ class Config(BaseModel):
         default="keywords",
         description="Режим реакции: keywords или interval"
     )
+    reaction_interval: int = Field(
+        default=10,
+        ge=1,
+        description="Интервал сообщений для ответа (если режим inteval)"
+    )
+    keywords_file: str = Field(
+        default="key.txt",
+        description="Файл с ключевыми словами (если режим keywords)"
+    )
 
     @field_validator('openai_api_key')
     def validate_openai_api_key(cls, value):
