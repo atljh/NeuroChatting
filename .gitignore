@@ -1,12 +1,12 @@
 .venv
 .vscode
 venv
+/logs
 logs.log
-/proxies.txt
 /config.yaml
 /groups.txt
 poetry.lock
-history_proxies.json
-/logs
 __pycache__
 dist
+*.session
+*.json
