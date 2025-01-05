@@ -2,6 +2,7 @@
 api:
   # Ключ API OpenAI
   openai_api_key: "ваш_api_ключ"
+  chat_gpt_model: "gpt-3.5-turbo" # Оставить
 
 # Настройки работы бота (опционально, можно изменить для персонализации)
 settings:

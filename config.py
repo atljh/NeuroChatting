@@ -3,6 +3,7 @@ import yaml
 from typing import Tuple
 from pydantic import BaseModel, Field, field_validator
 from src.logger import logger
+from src.console import console
 
 
 class Config(BaseModel):
@@ -72,15 +73,12 @@ class ConfigManager:
                 ):
                     min_delay, max_delay = map(int, send_message_delay.split('-'))
                     config_data['settings']['send_message_delay'] = (min_delay, max_delay)
-                    min_delay, max_delay = map(int, send_message_delay.split('-'))
-                    config_data['settings']['send_message_delay'] = (
-                        min_delay, max_delay
-                    )
 
                 return Config(
                     **config_data['api'],
                     **config_data['settings']
                 )
         except Exception as e:
+            console.log("Ошибка в конфиге", style="red")
             logger.error(f"Ошибка загрузки конфигурации: {e}")
             sys.exit(1)
