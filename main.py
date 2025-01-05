@@ -12,6 +12,7 @@ from scripts.authorization import register_user
 def main():
     config = ConfigManager.load_config()
     sessions_count = JsonConverter().main()
+    print(sessions_count)
     s = Starter(sessions_count, config)
     asyncio.run(s.main())
 

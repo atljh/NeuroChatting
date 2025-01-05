@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Generator
 
-from jsoner import json_read_sync
+from jsoner import json_read_sync  # type: ignore
 from src.console import console
+
 
 class BaseSession:
     def __init__(self):
