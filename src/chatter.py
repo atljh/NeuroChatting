@@ -5,9 +5,9 @@ from config import Config
 from src.console import console
 from src.thon import BaseThon
 from src.managers import ChannelManager
+from src.logger import logger
 
-
-class Commenter(BaseThon):
+class Chatter(BaseThon):
     def __init__(
         self,
         item: Path,
@@ -38,6 +38,7 @@ class Commenter(BaseThon):
                 self.client, self.account_phone
             )
         except Exception as e:
+            logger.error(f"Ошибка: {e}")
             console.log(f'Ошибка {e}', style='yellow')
 
     async def _main(self) -> str:

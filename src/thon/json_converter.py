@@ -55,7 +55,7 @@ class JsonConverter(BaseSession):
         except requests.exceptions.RequestException as e:
             console.log(f"Ошибка при проверке прокси {e}")
             return False
-        
+
     def _main(self, item: Path, json_file: Path, json_data: dict):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

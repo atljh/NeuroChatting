@@ -6,6 +6,7 @@ LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "bot.log")
 os.makedirs(LOG_DIR, exist_ok=True)
 
+
 def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -19,5 +20,6 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
         logger.addHandler(file_handler)
 
     return logger
+
 
 logger = setup_logger("bot_logger")

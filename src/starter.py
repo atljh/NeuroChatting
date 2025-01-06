@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 from asyncio import Semaphore
 from typing import Generator
@@ -6,9 +5,10 @@ from typing import Generator
 from tooler import move_item
 
 from src.console import console
-from src.commenter import Commenter
+from chatter import Chatter
 from src.managers import ChannelManager
 from src.thon import BaseSession
+from src.logger import logger
 
 
 class Starter(BaseSession):
@@ -30,10 +30,10 @@ class Starter(BaseSession):
         config
     ):
         try:
-            commenter = Commenter(item, json_file, json_data, config, self.channel_manager)
+            chatter = Chatter(item, json_file, json_data, config, self.channel_manager)
             async with self.semaphore:
                 try:
-                    r = await commenter.main()
+                    r = await chatter.main()
                 except Exception as e:
                     console.log(f"Ошибка при работе аккаунта {item}: {e}", style="red")
                     r = "ERROR_UNKNOWN"
@@ -41,13 +41,16 @@ class Starter(BaseSession):
                 console.log(f"Аккаунт {item.name} разлогинен или забанен", style="red")
                 move_item(item, self.banned_dir, True, True)
                 move_item(json_file, self.banned_dir, True, True)
+                return
             if "ERROR_STORY" in r:
                 console.log(f"Ошибка при работе аккаунта {item.name}", style="red")
                 move_item(item, self.errors_dir, True, True)
                 move_item(json_file, self.errors_dir, True, True)
+                return
             if "OK" in r:
                 console.log(f"Аккаунт {item.name} закончил работу", style="green")
         except Exception as e:
+            logger.error(f"Ошибка при работе акканута {item}: {e}")
             console.log(f"Ошибка при работе аккаунта {item}: {e}", style="red")
 
     def __get_sessions_and_users(self) -> Generator:
@@ -55,10 +58,10 @@ class Starter(BaseSession):
             yield item, json_file, json_data
 
     async def main(self) -> bool:
-        tasks = set()
-        for item, json_file, json_data in self.__get_sessions_and_users():
-            tasks.add(self._main(item, json_file, json_data, self.config))
-        if not tasks:
+        sessions = list(self.__get_sessions_and_users())
+        if not sessions:
+            console.log("Нет активных сессий. Прекращение работы.", style="yellow")
             return False
-        await asyncio.gather(*tasks, return_exceptions=True)
-        return True
+
+        for item, json_file, json_data in sessions:
+            await self._main(item, json_file, json_data, self.config)
