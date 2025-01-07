@@ -12,6 +12,9 @@ from telethon.errors import (
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
+from src.logger import logger
+from src.console import console
+
 
 class ChatJoiner:
     """
@@ -34,6 +37,7 @@ class ChatJoiner:
         """
         min_delay, max_delay = self.join_delay
         delay = random.randint(min_delay, max_delay)
+        console.log(f"Delay before joining chat: {delay} seconds")
         await asyncio.sleep(delay)
 
     async def join_channel(self, channel: str) -> bool:
@@ -62,51 +66,77 @@ class ChatJoiner:
             print(f"Failed to join channel {channel}: {e}")
             return False
 
-    async def join_group(self, invite_link: str) -> bool:
+    async def join_group(self, client, account_phone: str, group: str) -> str:
         """
-        Joins a private group using an invite link.
+        Joins a group with the specified account.
 
         Args:
-            invite_link: The invite link (e.g., "https://t.me/joinchat/abc123").
+            client: The Telethon client.
+            account_phone: The phone number of the account.
+            group: The group to join.
 
         Returns:
-            bool: True if joined successfully, False otherwise.
+            str: "OK" on success, "SKIP" on failure.
         """
         try:
-            await self._random_delay()
-            await self.client(ImportChatInviteRequest(invite_link.split("/")[-1]))
-            print(f"Successfully joined group: {invite_link}")
-            return True
-        except FloodWaitError as e:
-            print(f"FloodWaitError: Need to wait {e.seconds} seconds before joining {invite_link}.")
-            await asyncio.sleep(e.seconds)
-            return await self.join_group(invite_link)  # Retry after waiting
-        except (InviteHashExpiredError, InviteHashInvalidError):
-            print(f"Invite link is invalid or expired: {invite_link}.")
-            return False
-        except UserBannedInChannelError:
-            print(f"User is banned in group: {invite_link}.")
-            return False
+            entity = await client.get_entity(group)
+            is_member = await self.is_participant(client, entity)
+            if is_member:
+                return "OK"
+        except Exception:
+            try:
+                await self.sleep_before_enter_chat()
+                await client(ImportChatInviteRequest(group[6:]))
+                console.log(f"Account {account_phone} joined private group {group}", style="green")
+                return "OK"
+            except Exception as e:
+                if "is not valid anymore" in str(e):
+                    console.log(f"Account {account_phone} is banned in chat {group}. Adding to blacklist.", style="red")
+                    FileManager.add_to_blacklist(account_phone, group)
+                    return "SKIP"
+                elif "successfully requested to join" in str(e):
+                    console.log(f"Join request for group {group} is already sent and pending.", style="yellow")
+                    return "SKIP"
+                elif "A wait of" in str(e):
+                    console.log(f"Too many requests from account {account_phone}. Waiting {e.seconds} seconds.", style="yellow")
+                    return "SKIP"
+                else:
+                    console.log(f"Error joining group {group}: {e}", style="red")
+                    return "SKIP"
+        try:
+            await self.sleep_before_enter_chat()
+            await client(JoinChannelRequest(group))
+            console.log(f"Account joined group {group}", style="green")
+            return "OK"
         except Exception as e:
-            print(f"Failed to join group {invite_link}: {e}")
-            return False
+            if "successfully requested to join" in str(e):
+                console.log(f"Join request for group {group} is already sent and pending.", style="yellow")
+                return "SKIP"
+            elif "The chat is invalid" in str(e):
+                console.log(f"Chat link {group} is invalid.", style="yellow")
+                FileManager.add_to_blacklist(account_phone, group)
+                return "SKIP"
+            else:
+                console.log(f"Error joining group {group}: {e}", style="red")
+                return "SKIP"
 
-    async def is_member(self, channel: str) -> bool:
+    async def is_member(self, chat: str) -> bool:
         """
         Checks if the user is a member of the channel or group.
 
         Args:
-            channel: The channel username or link.
+            chat: The channel username or link.
 
         Returns:
             bool: True if the user is a member, False otherwise.
         """
         try:
-            entity = await self.client.get_entity(channel)
+            entity = await self.client.get_entity(chat)
             await self.client.get_permissions(entity, "me")
             return True
         except UserNotParticipantError:
             return False
         except Exception as e:
-            print(f"Error checking membership for {channel}: {e}")
+            logger.error(f"Error processing chat {chat}: {e}")
+            console.log(f"Error processing chat {chat}: {e}", style="red")
             return False
