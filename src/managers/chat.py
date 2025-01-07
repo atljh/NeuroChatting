@@ -18,11 +18,11 @@ from telethon.tl.functions.messages import (
 
 from src.logger import logger
 from src.console import console
-from src.managers.file_manager import FileManager
-from src.managers.comment_manager import CommentManager
+from src.managers.file import FileManager
+from src.managers.prompt import PromptManager
 
 
-class ChannelManager:
+class ChatManager:
     MAX_SEND_ATTEMPTS = 3
 
     def __init__(self, config):
@@ -34,7 +34,7 @@ class ChannelManager:
         self.send_comment_delay = self.config.send_message_delay
         self.channels = FileManager.read_channels()
         self.openai_client = OpenAI(api_key=config.openai_api_key)
-        self.comment_manager = CommentManager(config, self.openai_client)
+        self.comment_manager = PromptManager(config, self.openai_client)
 
         self.stop_event = asyncio.Event()
 
@@ -61,65 +61,58 @@ class ChannelManager:
         console.log(f"Задержка перед вступлением в чат {delay} сек")
         await asyncio.sleep(delay)
 
-    async def join_channels(self, client, account_phone):
-        for channel in self.channels:
+    async def join_group(self, client, account_phone, group):
+        try:
+            entity = await client.get_entity(group)
+            is_member = await self.is_participant(client, entity, group, account_phone)
+            if is_member:
+                return is_member
+        except Exception:
             try:
-                entity = await client.get_entity(channel)
-                if await self.is_participant(client, entity):
-                    continue
-            except InviteHashExpiredError:
-                self.channels.remove(channel)
-                console.log(f"Такого чата не существует или ссылка истекла: {channel}", style="red")
-            except Exception:
-                try:
-                    await self.sleep_before_enter_channel()
-                    await client(ImportChatInviteRequest(channel[6:]))
-                    console.log(
-                        f"Аккаунт {account_phone} присоединился к приватному чату {channel}"
-                    )
-                    continue
-                except Exception as e:
-                    if "is not valid anymore" in str(e):
-                        console.log(
-                            f"Вы забанены в канале {channel}, или такого канала не существует", style="yellow"
-                            )
-                        continue
-                    elif "A wait of" in str(e):
-                        console.log(
-                            f"Слишком много запросов \
-                                от аккаунта {account_phone}.\
-                                Ожидание {e.seconds} секунд.", style="yellow"
-                                )
-                        continue
-                    elif "is already" in str(e):
-                        continue
-                    else:
-                        console.log(f"Ошибка при присоединении к каналу {channel}: {e}")
-                        continue
-            try:
-                await self.sleep_before_enter_channel()
-                await client(JoinChannelRequest(channel))
-                console.log(f"Аккаунт присоединился к каналу {channel}")
+                await self.sleep_before_enter_group()
+                await client(ImportChatInviteRequest(group[6:]))
+                console.log(f"Аккаунт {account_phone} присоединился к приватной группе {group}", style="green")
+                return "OK"
             except Exception as e:
-                if "A wait of" in str(e):
+                if "is not valid anymore" in str(e):
+                    console.log(f"Аккаунт {account_phone} забанен в чате {group}, добавляем в черный список.", style="red")
+                    self.file_manager.add_to_blacklist(account_phone, group)
+                    return "SKIP"
+                elif "successfully requested to join" in str(e):
+                    console.log(f"Запрос на подписку в группу {group} уже отправлен и еще не подтвержден.", style="yellow")
+                    return "SKIP"
+                elif "A wait of" in str(e):
                     console.log(f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.", style="yellow")
-                    continue
-                elif "is not valid" in str(e):
-                    console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
-                    continue
+                    return "SKIP"
                 else:
-                    console.log(f"Ошибка при подписке на канал {channel}: {e}")
-                    continue
+                    console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
+                    return "SKIP"
+        try:
+            await self.sleep_before_enter_group()
+            await client(JoinChannelRequest(group))
+            console.log(f"Аккаунт присоединился к группе {group}", style="green")
+        except Exception as e:
+            if "successfully requested to join" in str(e):
+                console.log(f"Запрос на подписку в группу {group} уже отправлен и еще не подтвержден.", style="yellow")
+                return "SKIP"
+            elif "The chat is invalid" in str(e):
+                console.log("Ссылка на чат {group} не рабочая", style="yellow")
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "SKIP"
+            else:
+                console.log(f"Ошибка при подписке на группу {group}: {e}", style="red")
+                return "SKIP"
+        return "OK"
 
-    async def monitor_channels(self, client, account_phone):
-        if not self.channels:
-            console.log("Каналы не найдены", style="yellow")
+    async def monitor_groups(self, client, account_phone):
+        if not self.groups:
+            console.log("Группы не найдены", style="yellow")
             return
-        for channel in self.channels:
+        for group in self.groups:
             try:
                 client.add_event_handler(
                     lambda event: self.new_post_handler(client, event, self.prompt_tone, account_phone),
-                    events.NewMessage(chats=channel)
+                    events.NewMessage(chats=group)
                 )
             except Exception as e:
                 console.log(f'Ошибка, {e}', style="red")

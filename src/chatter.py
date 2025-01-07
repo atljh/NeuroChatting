@@ -2,10 +2,11 @@ import os
 from pathlib import Path
 
 from config import Config
-from src.console import console
 from src.thon import BaseThon
-from src.managers import ChannelManager
 from src.logger import logger
+from src.console import console
+from src.managers import ChatManager
+
 
 class Chatter(BaseThon):
     def __init__(
@@ -14,19 +15,19 @@ class Chatter(BaseThon):
         json_file: Path,
         json_data: dict,
         config: Config,
-        channel_manager: ChannelManager
+        chat_manager: ChatManager
     ):
         super().__init__(item=item, json_data=json_data)
         self.item = item
         self.config = config
         self.json_file = json_file
         self.account_phone = os.path.basename(self.item).split('.')[0]
-        self.channel_manager = channel_manager
-        self.channel_manager.add_accounts_to_queue([self.account_phone])
-        self.channel_manager.add_account({self.account_phone: self.client})
+        self.chat_manager = chat_manager
+        self.chat_manager.add_accounts_to_queue([self.account_phone])
+        self.chat_manager.add_account({self.account_phone: self.client})
 
     async def __main(self):
-        await self.channel_manager.join_channels(
+        await self.chat_manager.join_group(
             self.client, self.account_phone
         )
         console.log(
@@ -34,7 +35,7 @@ class Chatter(BaseThon):
             style="green"
         )
         try:
-            await self.channel_manager.monitor_channels(
+            await self.chat_manager.monitor_groups(
                 self.client, self.account_phone
             )
         except Exception as e:

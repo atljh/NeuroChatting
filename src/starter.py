@@ -5,7 +5,7 @@ from typing import Generator
 from tooler import move_item
 
 from src.console import console
-from chatter import Chatter
+from src.chatter import Chatter
 from src.managers import ChannelManager
 from src.thon import BaseSession
 from src.logger import logger
