@@ -6,21 +6,24 @@ from telethon.errors import (
     FloodWaitError,
     UserNotParticipantError,
     UserBannedInChannelError,
-    InviteHashExpiredError,
-    InviteHashInvalidError,
 )
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from src.logger import logger
 from src.console import console
+from src.managers import FileManager
 
 
 class ChatJoiner:
     """
     A class to handle joining Telegram channels and groups.
     """
-    def __init__(self, client: TelegramClient, join_delay: tuple[int, int] = (5, 10)):
+    def __init__(
+            self,
+            client: TelegramClient,
+            join_delay: tuple[int, int] = (5, 10)
+    ):
         """
         Initializes the ChannelJoiner.
 
@@ -66,7 +69,12 @@ class ChatJoiner:
             print(f"Failed to join channel {channel}: {e}")
             return False
 
-    async def join_group(self, client, account_phone: str, group: str) -> str:
+    async def join_group(
+            self,
+            client,
+            account_phone: str,
+            group: str
+    ) -> str:
         """
         Joins a group with the specified account.
 
@@ -87,21 +95,28 @@ class ChatJoiner:
             try:
                 await self.sleep_before_enter_chat()
                 await client(ImportChatInviteRequest(group[6:]))
-                console.log(f"Account {account_phone} joined private group {group}", style="green")
+                console.log(f"Аккаунт {account_phone} присоединился к приватному чату {group}", style="green")
                 return "OK"
             except Exception as e:
                 if "is not valid anymore" in str(e):
-                    console.log(f"Account {account_phone} is banned in chat {group}. Adding to blacklist.", style="red")
+                    console.log(
+                        f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
+                        style="red"
+                    )
                     FileManager.add_to_blacklist(account_phone, group)
                     return "SKIP"
                 elif "successfully requested to join" in str(e):
-                    console.log(f"Join request for group {group} is already sent and pending.", style="yellow")
+                    console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
                     return "SKIP"
                 elif "A wait of" in str(e):
-                    console.log(f"Too many requests from account {account_phone}. Waiting {e.seconds} seconds.", style="yellow")
+                    console.log(
+                        f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
+                        style="yellow"
+                    )
                     return "SKIP"
                 else:
-                    console.log(f"Error joining group {group}: {e}", style="red")
+                    logger.error(f"Error joining group {group}: {e}")
+                    console.log(f"Ошибка при вступлении в группу {group}: {e}", style="red")
                     return "SKIP"
         try:
             await self.sleep_before_enter_chat()
@@ -138,5 +153,5 @@ class ChatJoiner:
             return False
         except Exception as e:
             logger.error(f"Error processing chat {chat}: {e}")
-            console.log(f"Error processing chat {chat}: {e}", style="red")
+            console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
             return False
