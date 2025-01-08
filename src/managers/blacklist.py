@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 from src.managers import FileManager
 
 
@@ -5,7 +7,7 @@ class BlackList:
     """Class to add accounts to blacklist."""
 
     @staticmethod
-    def get_blacklist() -> dict:
+    def get_blacklist() -> Dict[str, List[str]]:
         """
         return
             {account_phone: [groups]}
