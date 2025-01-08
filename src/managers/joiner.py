@@ -2,22 +2,21 @@ import asyncio
 import random
 
 from telethon import TelegramClient
-from telethon.errors import (
-    FloodWaitError,
-    UserNotParticipantError,
-    UserBannedInChannelError,
+from telethon.errors import UserNotParticipantError, FloodWaitError
+from telethon.errors.rpcerrorlist import (
+    InviteHashExpiredError
 )
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from src.logger import logger
-from src.console import console
+from src.logger import console
 from src.managers import FileManager
 
 
 class ChatJoiner:
     """
-    A class to handle joining Telegram channels and groups.
+    Class to handle joining Telegram channels and groups.
     """
     def __init__(
             self,
@@ -43,7 +42,12 @@ class ChatJoiner:
         console.log(f"Delay before joining chat: {delay} seconds")
         await asyncio.sleep(delay)
 
-    async def join_channel(self, channel: str) -> bool:
+    async def join_channel(
+        self,
+        client: TelegramClient,
+        account_phone: str,
+        channel: str
+    ) -> str:
         """
         Joins a public channel.
 
@@ -54,26 +58,67 @@ class ChatJoiner:
             bool: True if joined successfully, False otherwise.
         """
         try:
-            await self._random_delay()
-            await self.client(JoinChannelRequest(channel))
-            print(f"Successfully joined channel: {channel}")
-            return True
-        except FloodWaitError as e:
-            print(f"FloodWaitError: Need to wait {e.seconds} seconds before joining {channel}.")
-            await asyncio.sleep(e.seconds)
-            return await self.join_channel(channel)  # Retry after waiting
-        except UserBannedInChannelError:
-            print(f"User is banned in channel: {channel}.")
-            return False
+            entity = await client.get_entity(channel)
+            if await self.is_participant(client, entity):
+                return True
+        except InviteHashExpiredError:
+            self.channels.remove(channel)
+            console.log(f"Такого канала не существует или ссылка истекла: {channel}", style="red")
+        except Exception:
+            try:
+                await self.sleep_before_enter_channel()
+                await client(ImportChatInviteRequest(channel[6:]))
+                console.log(
+                    f"Аккаунт {account_phone} присоединился к приватному каналу {channel}"
+                )
+                return True
+            except FloodWaitError as e:
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
+                    style="yellow"
+                )
+                return "SKIP"
+            except Exception as e:
+                if "is not valid anymore" in str(e):
+                    console.log(
+                        f"Вы забанены в канале {channel}, или такого канала не существует", style="yellow"
+                        )
+                    return "OK"
+                elif "A wait of" in str(e):
+                    console.log(
+                        f"Слишком много запросов \
+                            от аккаунта {account_phone}.\
+                            Ожидание {e.seconds} секунд.", style="yellow"
+                            )
+                    continue
+                elif "is already" in str(e):
+                    continue
+                else:
+                    console.log(f"Ошибка при присоединении к каналу {channel}: {e}")
+                    continue
+        try:
+            await self.sleep_before_enter_channel()
+            await client(JoinChannelRequest(channel))
+            console.log(f"Аккаунт присоединился к каналу {channel}")
         except Exception as e:
-            print(f"Failed to join channel {channel}: {e}")
-            return False
+            if "A wait of" in str(e):
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
+                    style="yellow"
+                )
+                continue
+            elif "is not valid" in str(e):
+                console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
+                continue
+            else:
+                console.log(f"Ошибка при подписке на канал {channel}: {e}")
+                continue
 
     async def join_group(
-            self,
-            client,
-            account_phone: str,
-            group: str
+        self,
+        client: TelegramClient,
+        account_phone: str,
+        group: str
     ) -> str:
         """
         Joins a group with the specified account.
@@ -121,18 +166,25 @@ class ChatJoiner:
         try:
             await self.sleep_before_enter_chat()
             await client(JoinChannelRequest(group))
-            console.log(f"Account joined group {group}", style="green")
+            console.log(f"Аккаунт присоединился к группе {group}", style="green")
             return "OK"
+        except FloodWaitError as e:
+            console.log(
+                f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
+                style="yellow"
+            )
+            return "SKIP"
         except Exception as e:
             if "successfully requested to join" in str(e):
-                console.log(f"Join request for group {group} is already sent and pending.", style="yellow")
+                console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
                 return "SKIP"
             elif "The chat is invalid" in str(e):
-                console.log(f"Chat link {group} is invalid.", style="yellow")
+                console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
                 FileManager.add_to_blacklist(account_phone, group)
                 return "SKIP"
             else:
-                console.log(f"Error joining group {group}: {e}", style="red")
+                logger.error(f"Error joining group {group}: {e}")
+                console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
                 return "SKIP"
 
     async def is_member(self, chat: str) -> bool:
