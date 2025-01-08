@@ -1,6 +1,7 @@
+import os
 import logging
 from logging.handlers import RotatingFileHandler
-import os
+from rich.console import Console
 
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "bot.log")
@@ -23,3 +24,4 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
 
 
 logger = setup_logger("bot_logger")
+console = Console(log_path=False)
