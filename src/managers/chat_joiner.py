@@ -22,6 +22,15 @@ class ChatType(Enum):
     UNKNOWN = "unknown"
 
 
+class JoinStatus(Enum):
+    OK = "OK"
+    SKIP = "SKIP"
+    BANNED = "BANNED"
+    FLOOD = "FLOOD"
+    ERROR = "ERROR"
+    ALREADY_JOINED = "ALREADY_JOINED"
+
+
 class ChatJoiner:
     """
     Class to handle joining Telegram channels and groups.
@@ -41,6 +50,33 @@ class ChatJoiner:
         self.client = client
         self.join_delay = join_delay
 
+    async def join(
+        self,
+        client: TelegramClient,
+        account_phone: str,
+        chat: str
+    ) -> JoinStatus:
+        """
+        Joins a chat (channel or group).
+
+        Args:
+            client: The Telethon client instance.
+            account_phone: The phone number of the account.
+            chat: The chat link or username.
+
+        Returns:
+            JoinStatus: The result of the operation.
+        """
+        chat_type = await self.detect_chat(chat)
+        if chat_type == ChatType.UNKNOWN:
+            console.log(f"Failed to determine chat type: {chat}", style="red")
+            return JoinStatus.ERROR
+
+        if chat_type == ChatType.CHANNEL:
+            return await self.join_channel(client, account_phone, chat)
+        elif chat_type == ChatType.GROUP:
+            return await self.join_group(client, account_phone, chat)
+
     async def _random_delay(self):
         """
         Sleeps for a random duration between min_delay and max_delay.
@@ -54,10 +90,10 @@ class ChatJoiner:
         """
         Detect chat type
         Args:
-            chat: Ссылка на чат или его username.
+            chat: chat link or username.
 
         Returns:
-            ChatType: Тип чата (CHANNEL, GROUP или UNKNOWN).
+            ChatType: Chat type (CHANNEL, GROUP or UNKNOWN).
         """
         try:
             entity = await self.client.get_entity(chat)
