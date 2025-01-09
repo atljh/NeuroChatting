@@ -1,7 +1,9 @@
 import asyncio
 import random
+from enum import Enum
 
 from telethon import TelegramClient
+from telethon.tl.types import Channel, Chat
 from telethon.errors import UserNotParticipantError, FloodWaitError
 from telethon.errors.rpcerrorlist import (
     InviteHashExpiredError
@@ -11,7 +13,13 @@ from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from src.logger import logger
 from src.logger import console
-from src.managers import FileManager
+from src.managers import BlackList
+
+
+class ChatType(Enum):
+    CHANNEL = "channel"
+    GROUP = "group"
+    UNKNOWN = "unknown"
 
 
 class ChatJoiner:
@@ -41,6 +49,27 @@ class ChatJoiner:
         delay = random.randint(min_delay, max_delay)
         console.log(f"Delay before joining chat: {delay} seconds")
         await asyncio.sleep(delay)
+
+    async def detect_chat(self, chat: str) -> ChatType:
+        """
+        Detect chat type
+        Args:
+            chat: Ссылка на чат или его username.
+
+        Returns:
+            ChatType: Тип чата (CHANNEL, GROUP или UNKNOWN).
+        """
+        try:
+            entity = await self.client.get_entity(chat)
+            if isinstance(entity, Channel):
+                return ChatType.CHANNEL
+            elif isinstance(entity, Chat):
+                return ChatType.GROUP
+            else:
+                return ChatType.UNKNOWN
+        except Exception as e:
+            console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
+            return ChatType.UNKNOWN
 
     async def join_channel(
         self,
@@ -90,12 +119,12 @@ class ChatJoiner:
                             от аккаунта {account_phone}.\
                             Ожидание {e.seconds} секунд.", style="yellow"
                             )
-                    continue
+                    return
                 elif "is already" in str(e):
-                    continue
+                    return
                 else:
                     console.log(f"Ошибка при присоединении к каналу {channel}: {e}")
-                    continue
+                    return
         try:
             await self.sleep_before_enter_channel()
             await client(JoinChannelRequest(channel))
@@ -106,13 +135,13 @@ class ChatJoiner:
                     f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
                     style="yellow"
                 )
-                continue
+                return
             elif "is not valid" in str(e):
                 console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
-                continue
+                return
             else:
                 console.log(f"Ошибка при подписке на канал {channel}: {e}")
-                continue
+                return
 
     async def join_group(
         self,
@@ -148,7 +177,7 @@ class ChatJoiner:
                         f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
                         style="red"
                     )
-                    FileManager.add_to_blacklist(account_phone, group)
+                    BlackList.add_to_blacklist(account_phone, group)
                     return "SKIP"
                 elif "successfully requested to join" in str(e):
                     console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
@@ -180,7 +209,7 @@ class ChatJoiner:
                 return "SKIP"
             elif "The chat is invalid" in str(e):
                 console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
-                FileManager.add_to_blacklist(account_phone, group)
+                BlackList.add_to_blacklist(account_phone, group)
                 return "SKIP"
             else:
                 logger.error(f"Error joining group {group}: {e}")
