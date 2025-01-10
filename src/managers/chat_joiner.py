@@ -66,7 +66,7 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
-
+        print(chat, chat_type)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
 
@@ -138,9 +138,9 @@ class ChatJoiner:
             bool: True if joined successfully, False otherwise.
         """
         try:
-            entity = await client.get_entity(channel)
-            if await self.is_participant(client, entity):
-                return True
+            is_member = await self.is_member(client, channel, account_phone)
+            if is_member:
+                return "OK"
         except InviteHashExpiredError:
             self.channels.remove(channel)
             console.log(
@@ -162,7 +162,7 @@ class ChatJoiner:
                 )
                 return "SKIP"
             except Exception as e:
-                print(e)
+                console.log(e, style='red')
                 if "is not valid anymore" in str(e):
                     console.log(
                         f"Вы забанены в канале {channel}, или такого канала не существует",
@@ -216,9 +216,7 @@ class ChatJoiner:
             str: "OK" on success, "SKIP" on failure.
         """
         try:
-            chat = await client.get_entity(group)
-            console.log(client, account_phone)
-            is_member = await self.is_member(client, chat, group, account_phone)
+            is_member = await self.is_member(client, group, account_phone)
             if is_member:
                 return "OK"
         except Exception:
@@ -231,7 +229,6 @@ class ChatJoiner:
                 )
                 return "OK"
             except Exception as e:
-                console.log(e)
                 if "is not valid anymore" in str(e):
                     console.log(
                         f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
@@ -276,7 +273,11 @@ class ChatJoiner:
                 console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
                 return "SKIP"
 
-    async def is_member(self, client: TelegramClient, chat, chat_link: str, account_phone) -> bool:
+    async def is_member(
+            self,
+            client: TelegramClient,
+            chat_link: str,
+            account_phone: str) -> bool:
         """
         Checks if the user is a member of the channel or group.
 
@@ -287,8 +288,8 @@ class ChatJoiner:
             bool: True if the user is a member, False otherwise.
         """
         try:
-            entity = await client.get_entity(chat)
-            await client.get_permissions(entity, "me")
+            chat = await client.get_entity(chat_link)
+            await client.get_permissions(chat, "me")
             return True
         except UserNotParticipantError:
             return False
