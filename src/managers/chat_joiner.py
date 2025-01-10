@@ -37,7 +37,6 @@ class ChatJoiner:
     """
     def __init__(
             self,
-            client: TelegramClient,
             config: Config
     ):
         """
@@ -47,7 +46,6 @@ class ChatJoiner:
             client: The Telethon client.
             join_delay: A tuple (min_delay, max_delay) for random delay before joining.
         """
-        self.client = client,
         self.config = config
 
     async def join(
@@ -68,7 +66,7 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
-        print(chat_type)
+
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
 
@@ -120,6 +118,7 @@ class ChatJoiner:
             else:
                 return ChatType.UNKNOWN
         except Exception as e:
+            logger.error(f"Error trying to determine chat type {chat}: {e}")
             console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
             return ChatType.UNKNOWN
 
@@ -144,7 +143,10 @@ class ChatJoiner:
                 return True
         except InviteHashExpiredError:
             self.channels.remove(channel)
-            console.log(f"Такого канала не существует или ссылка истекла: {channel}", style="red")
+            console.log(
+                f"Такого канала не существует или ссылка истекла: {channel}",
+                style="red"
+            )
         except Exception:
             try:
                 await self._random_delay()
@@ -160,17 +162,18 @@ class ChatJoiner:
                 )
                 return "SKIP"
             except Exception as e:
+                print(e)
                 if "is not valid anymore" in str(e):
                     console.log(
-                        f"Вы забанены в канале {channel}, или такого канала не существует", style="yellow"
-                        )
+                        f"Вы забанены в канале {channel}, или такого канала не существует",
+                        style="yellow"
+                    )
                     return "OK"
                 elif "A wait of" in str(e):
                     console.log(
-                        f"Слишком много запросов \
-                            от аккаунта {account_phone}.\
-                            Ожидание {e.seconds} секунд.", style="yellow"
-                            )
+                        f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
+                        style="yellow"
+                    )
                     return
                 elif "is already" in str(e):
                     return
@@ -213,17 +216,22 @@ class ChatJoiner:
             str: "OK" on success, "SKIP" on failure.
         """
         try:
-            entity = await client.get_entity(group)
-            is_member = await self.is_participant(client, entity)
+            chat = await client.get_entity(group)
+            console.log(client, account_phone)
+            is_member = await self.is_member(client, chat, group, account_phone)
             if is_member:
                 return "OK"
         except Exception:
             try:
-                await self.sleep_before_enter_chat()
-                await client(ImportChatInviteRequest(group[6:]))
-                console.log(f"Аккаунт {account_phone} присоединился к приватному чату {group}", style="green")
+                await self._random_delay()
+                await client(ImportChatInviteRequest(group))
+                console.log(
+                    f"Аккаунт {account_phone} присоединился к приватному чату {group}",
+                    style="green"
+                )
                 return "OK"
             except Exception as e:
+                console.log(e)
                 if "is not valid anymore" in str(e):
                     console.log(
                         f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
@@ -245,7 +253,7 @@ class ChatJoiner:
                     console.log(f"Ошибка при вступлении в группу {group}: {e}", style="red")
                     return "SKIP"
         try:
-            await self.sleep_before_enter_chat()
+            await self._random_delay()
             await client(JoinChannelRequest(group))
             console.log(f"Аккаунт присоединился к группе {group}", style="green")
             return "OK"
@@ -268,7 +276,7 @@ class ChatJoiner:
                 console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
                 return "SKIP"
 
-    async def is_member(self, chat: str) -> bool:
+    async def is_member(self, client: TelegramClient, chat, chat_link: str, account_phone) -> bool:
         """
         Checks if the user is a member of the channel or group.
 
@@ -279,12 +287,19 @@ class ChatJoiner:
             bool: True if the user is a member, False otherwise.
         """
         try:
-            entity = await self.client.get_entity(chat)
-            await self.client.get_permissions(entity, "me")
+            entity = await client.get_entity(chat)
+            await client.get_permissions(entity, "me")
             return True
         except UserNotParticipantError:
             return False
         except Exception as e:
+            if "private and you lack permission" in str(e):
+                console.log(
+                    f"Аккаунт {account_phone} забанен в чате {chat.title} добавляем в черный список",
+                    style="red"
+                )
+                BlackList.add_to_blacklist(account_phone, chat_link)
+                return "SKIP"
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
             return False

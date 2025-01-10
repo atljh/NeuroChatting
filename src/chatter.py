@@ -20,7 +20,7 @@ class Chatter(BaseThon):
         self.config = config
         self.json_file = json_file
         self.chat_manager = ChatManager(config)
-        self.chat_joiner = ChatJoiner(self.client, config)
+        self.chat_joiner = ChatJoiner(config)
         self.file_manager = FileManager()
         self.account_phone = os.path.basename(self.item).split('.')[0]
 
