@@ -67,7 +67,8 @@ class ChatJoiner:
         Returns:
             JoinStatus: The result of the operation.
         """
-        chat_type = await self.detect_chat(chat)
+        chat_type = await self.detect_chat(client, chat)
+        print(chat_type)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
 
@@ -85,8 +86,15 @@ class ChatJoiner:
         console.log(f"Задержка перед вступлением в чат: {delay} секунд")
         await asyncio.sleep(delay)
 
+    def clean_chat_link(self, chat_link: str) -> str:
+        if chat_link.startswith("https://t.me/"):
+            chat_link = chat_link[13:]
+        chat_link = chat_link.split("?")[0]
+        return chat_link
+
     async def detect_chat(
         self,
+        client: TelegramClient,
         chat: str
     ) -> ChatType:
         """
@@ -98,17 +106,20 @@ class ChatJoiner:
             ChatType: Chat type (CHANNEL, GROUP or UNKNOWN).
         """
         try:
-            entity = await self.client.get_entity(chat)
+            chat = self.clean_chat_link(chat)
+
+            entity = await client.get_entity(chat)
+
             if isinstance(entity, Channel):
-                return ChatType.CHANNEL
+                if entity.megagroup:
+                    return ChatType.GROUP
+                else:
+                    return ChatType.CHANNEL
             elif isinstance(entity, Chat):
                 return ChatType.GROUP
             else:
-                logger.error(f"Failed to determine chat type {chat}")
-                console.log(f"Ошибка определения типа чата {chat}", style="red")
                 return ChatType.UNKNOWN
         except Exception as e:
-            logger.error(f"Failed to determine chat type {chat}")
             console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
             return ChatType.UNKNOWN
 
@@ -136,7 +147,7 @@ class ChatJoiner:
             console.log(f"Такого канала не существует или ссылка истекла: {channel}", style="red")
         except Exception:
             try:
-                await self.sleep_before_enter_channel()
+                await self._random_delay()
                 await client(ImportChatInviteRequest(channel[6:]))
                 console.log(
                     f"Аккаунт {account_phone} присоединился к приватному каналу {channel}"
@@ -167,7 +178,7 @@ class ChatJoiner:
                     console.log(f"Ошибка при присоединении к каналу {channel}: {e}")
                     return
         try:
-            await self.sleep_before_enter_channel()
+            await self._random_delay()
             await client(JoinChannelRequest(channel))
             console.log(f"Аккаунт присоединился к каналу {channel}")
         except Exception as e:
