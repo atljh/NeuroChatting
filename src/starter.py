@@ -4,10 +4,9 @@ from typing import Generator
 
 from tooler import move_item
 from src.thon import BaseSession
+from src.chatter import Chatter
 from src.logger import logger
 from src.logger import console
-from src.chatter import Chatter
-from src.managers import ChatManager
 
 
 class Starter(BaseSession):

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from config import Config
 from src.thon import BaseThon
-from src.managers import ChatManager, ChatJoiner
+from src.managers import ChatManager, ChatJoiner, FileManager
 from src.logger import logger, console
 
 
@@ -20,7 +20,8 @@ class Chatter(BaseThon):
         self.config = config
         self.json_file = json_file
         self.chat_manager = ChatManager(config)
-        self.chat_joiner = ChatJoiner
+        self.chat_joiner = ChatJoiner(self.client, config)
+        self.file_manager = FileManager()
         self.account_phone = os.path.basename(self.item).split('.')[0]
 
     async def _start(self):
@@ -34,10 +35,11 @@ class Chatter(BaseThon):
         )
         await self._start_chat_handler()
 
-    async def _join_groups(self):
-        return await self.chat_joiner.join(
-            self.client, self.account_phone
-        )
+    async def _join_groups(self) -> None:
+        for group in self.file_manager.read_groups():
+            await self.chat_joiner.join(
+                self.client, self.account_phone, group
+            )
 
     async def _start_chat_handler(self):
         try:

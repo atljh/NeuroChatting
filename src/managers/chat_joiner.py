@@ -13,6 +13,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from src.logger import logger, console
 from src.managers import BlackList
+from config import Config
 
 
 class ChatType(Enum):
@@ -37,7 +38,7 @@ class ChatJoiner:
     def __init__(
             self,
             client: TelegramClient,
-            join_delay: tuple[int, int] = (5, 10)
+            config: Config
     ):
         """
         Initializes the ChannelJoiner.
@@ -46,8 +47,8 @@ class ChatJoiner:
             client: The Telethon client.
             join_delay: A tuple (min_delay, max_delay) for random delay before joining.
         """
-        self.client = client
-        self.join_delay = join_delay
+        self.client = client,
+        self.config = config
 
     async def join(
         self,
@@ -71,15 +72,15 @@ class ChatJoiner:
             return JoinStatus.ERROR
 
         if chat_type == ChatType.CHANNEL:
-            return await self.join_channel(client, account_phone, chat)
+            return await self._join_channel(client, account_phone, chat)
         elif chat_type == ChatType.GROUP:
-            return await self.join_group(client, account_phone, chat)
+            return await self._join_group(client, account_phone, chat)
 
     async def _random_delay(self):
         """
         Sleeps for a random duration between min_delay and max_delay.
         """
-        min_delay, max_delay = self.join_delay
+        min_delay, max_delay = self.config.join_group_delay
         delay = random.randint(min_delay, max_delay)
         console.log(f"Задержка перед вступлением в чат: {delay} секунд")
         await asyncio.sleep(delay)
@@ -111,7 +112,7 @@ class ChatJoiner:
             console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
             return ChatType.UNKNOWN
 
-    async def join_channel(
+    async def _join_channel(
         self,
         client: TelegramClient,
         account_phone: str,
@@ -183,7 +184,7 @@ class ChatJoiner:
                 console.log(f"Ошибка при подписке на канал {channel}: {e}")
                 return
 
-    async def join_group(
+    async def _join_group(
         self,
         client: TelegramClient,
         account_phone: str,
