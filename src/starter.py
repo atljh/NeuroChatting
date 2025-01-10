@@ -3,12 +3,11 @@ from asyncio import Semaphore
 from typing import Generator
 
 from tooler import move_item
-
-from src.console import console
-from src.chatter import Chatter
-from src.managers import ChannelManager
 from src.thon import BaseSession
 from src.logger import logger
+from src.logger import console
+from src.chatter import Chatter
+from src.managers import ChatManager
 
 
 class Starter(BaseSession):
@@ -18,7 +17,6 @@ class Starter(BaseSession):
         config
     ):
         self.semaphore = Semaphore(threads)
-        self.channel_manager = ChannelManager(config)
         self.config = config
         super().__init__()
 
@@ -30,7 +28,7 @@ class Starter(BaseSession):
         config
     ):
         try:
-            chatter = Chatter(item, json_file, json_data, config, self.channel_manager)
+            chatter = Chatter(item, json_file, json_data, config)
             async with self.semaphore:
                 try:
                     r = await chatter.main()
@@ -62,6 +60,5 @@ class Starter(BaseSession):
         if not sessions:
             console.log("Нет активных сессий. Прекращение работы.", style="yellow")
             return False
-
         for item, json_file, json_data in sessions:
             await self._main(item, json_file, json_data, self.config)

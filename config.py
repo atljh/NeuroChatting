@@ -2,8 +2,7 @@ import sys
 import yaml
 from typing import Tuple
 from pydantic import BaseModel, Field, field_validator
-from src.logger import logger
-from src.console import console
+from src.logger import logger, console
 
 
 class Config(BaseModel):

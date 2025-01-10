@@ -1,7 +1,7 @@
 import openai
 
-from src.console import console
-from src.managers.file import FileManager
+from src.logger import console
+from src.managers.file_manager import FileManager
 
 
 class PromptManager:

@@ -9,7 +9,7 @@ from telethon.sessions import StringSession
 from jsoner import json_write_sync
 from tooler import ProxyParser
 
-from src.console import console
+from src.logger import console
 from src.thon.base_session import BaseSession
 from scripts.ask_from_history import ask_from_history
 

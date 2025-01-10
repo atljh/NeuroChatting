@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Generator
 
 from jsoner import json_read_sync  # type: ignore
-from src.console import console
+from src.logger import console
 
 
 class BaseSession:

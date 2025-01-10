@@ -11,8 +11,7 @@ from telethon.errors.rpcerrorlist import (
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
-from src.logger import logger
-from src.logger import console
+from src.logger import logger, console
 from src.managers import BlackList
 
 
@@ -69,7 +68,6 @@ class ChatJoiner:
         """
         chat_type = await self.detect_chat(chat)
         if chat_type == ChatType.UNKNOWN:
-            console.log(f"Failed to determine chat type: {chat}", style="red")
             return JoinStatus.ERROR
 
         if chat_type == ChatType.CHANNEL:
@@ -83,10 +81,13 @@ class ChatJoiner:
         """
         min_delay, max_delay = self.join_delay
         delay = random.randint(min_delay, max_delay)
-        console.log(f"Delay before joining chat: {delay} seconds")
+        console.log(f"Задержка перед вступлением в чат: {delay} секунд")
         await asyncio.sleep(delay)
 
-    async def detect_chat(self, chat: str) -> ChatType:
+    async def detect_chat(
+        self,
+        chat: str
+    ) -> ChatType:
         """
         Detect chat type
         Args:
@@ -102,8 +103,11 @@ class ChatJoiner:
             elif isinstance(entity, Chat):
                 return ChatType.GROUP
             else:
+                logger.error(f"Failed to determine chat type {chat}")
+                console.log(f"Ошибка определения типа чата {chat}", style="red")
                 return ChatType.UNKNOWN
         except Exception as e:
+            logger.error(f"Failed to determine chat type {chat}")
             console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
             return ChatType.UNKNOWN
 
