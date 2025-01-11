@@ -4,11 +4,19 @@ from enum import Enum
 
 from telethon import TelegramClient
 from telethon.tl.types import Channel, Chat
-from telethon.errors import UserNotParticipantError, FloodWaitError
+from telethon.errors import (
+    UserNotParticipantError,
+    FloodWaitError,
+    ChatAdminRequiredError
+)
 from telethon.errors.rpcerrorlist import (
+    InviteHashInvalidError,
     InviteHashExpiredError
 )
-from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.channels import (
+    JoinChannelRequest,
+    GetFullChannelRequest
+)
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from src.logger import logger, console
@@ -67,7 +75,9 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
-        print(chat, chat_type)
+        res = await self.is_private_chat(client, chat, account_phone)
+        if (await self.is_member(client, chat, account_phone)):
+            return
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
 
@@ -119,6 +129,8 @@ class ChatJoiner:
             else:
                 return ChatType.UNKNOWN
         except Exception as e:
+            if "you are not part of" in str(e):
+                return ChatType.GROUP
             logger.error(f"Error trying to determine chat type {chat}: {e}")
             console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
             return ChatType.UNKNOWN
@@ -151,7 +163,7 @@ class ChatJoiner:
         except Exception:
             try:
                 await self._random_delay()
-                await client(ImportChatInviteRequest(channel[6:]))
+                await client(ImportChatInviteRequest(channel))
                 console.log(
                     f"Аккаунт {account_phone} присоединился к приватному каналу {channel}",
                     style="green"
@@ -220,68 +232,61 @@ class ChatJoiner:
             str: "OK" on success, "SKIP" on failure.
         """
         try:
-            is_member = await self.is_member(client, group, account_phone)
-            if is_member:
-                return "OK"
-        except Exception:
-            try:
-                await self._random_delay()
-                await client(ImportChatInviteRequest(group))
+            await self._random_delay()
+            await client(ImportChatInviteRequest(group))
+            console.log(
+                f"Аккаунт {account_phone} присоединился к приватному чату {group}",
+                style="green"
+            )
+            return "OK"
+        except Exception as e:
+            if "is not valid anymore" in str(e):
                 console.log(
-                    f"Аккаунт {account_phone} присоединился к приватному чату {group}",
-                    style="green"
+                    f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
+                    style="red"
                 )
-                return "OK"
-            except Exception as e:
-                if "is not valid anymore" in str(e):
-                    console.log(
-                        f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
-                        style="red"
-                    )
-                    self.blacklist.add_to_blacklist(account_phone, group)
-                    return "SKIP"
-                elif "successfully requested to join" in str(e):
-                    console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
-                    return "SKIP"
-                elif "A wait of" in str(e):
+                self.blacklist.add_to_blacklist(account_phone, group)
+                return "SKIP"
+            elif "successfully requested to join" in str(e):
+                console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
+                return "SKIP"
+            elif "A wait of" in str(e):
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
+                    style="yellow"
+                )
+                return "SKIP"
+            else:
+                try:
+                    await self._random_delay()
+                    await client(JoinChannelRequest(group))
+                    console.log(f"Аккаунт присоединился к группе {group}", style="green")
+                    return "OK"
+                except FloodWaitError as e:
                     console.log(
                         f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                         style="yellow"
                     )
                     return "SKIP"
-                else:
-                    logger.error(f"Error joining group {group}: {e}")
-                    console.log(f"Ошибка при вступлении в группу {group}: {e}", style="red")
-                    return "SKIP"
-        try:
-            await self._random_delay()
-            await client(JoinChannelRequest(group))
-            console.log(f"Аккаунт присоединился к группе {group}", style="green")
-            return "OK"
-        except FloodWaitError as e:
-            console.log(
-                f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
-                style="yellow"
-            )
-            return "SKIP"
-        except Exception as e:
-            if "successfully requested to join" in str(e):
-                console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
-                return "SKIP"
-            elif "The chat is invalid" in str(e):
-                console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
-                self.blacklist.add_to_blacklist(account_phone, group)
-                return "SKIP"
-            else:
-                logger.error(f"Error joining group {group}: {e}")
-                console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
-                return "SKIP"
+                except Exception as e:
+                    if "successfully requested to join" in str(e):
+                        console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
+                        return "SKIP"
+                    elif "The chat is invalid" in str(e):
+                        console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
+                        self.blacklist.add_to_blacklist(account_phone, group)
+                        return "SKIP"
+                    else:
+                        logger.error(f"Ошибка при присоединении к группе {group}: {e}")
+                        console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
+                        return "SKIP"
 
     async def is_member(
             self,
             client: TelegramClient,
             chat_link: str,
-            account_phone: str) -> bool:
+            account_phone: str
+    ) -> bool:
         """
         Checks if the user is a member of the channel or group.
 
@@ -297,6 +302,12 @@ class ChatJoiner:
             return True
         except UserNotParticipantError:
             return False
+        except InviteHashExpiredError:
+            console.log(
+                f"Такого канала не существует или ссылка истекла: {chat}",
+                style="yellow"
+            )
+            return False
         except Exception as e:
             if "private and you lack permission" in str(e):
                 console.log(
@@ -307,4 +318,52 @@ class ChatJoiner:
                 return "SKIP"
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
+            return False
+
+    async def is_private_chat(
+        self,
+        client: TelegramClient,
+        chat: str,
+        account_phone: str
+    ) -> bool:
+        """
+        Checks if group or chat is private
+
+        Args:
+            client: TelegramClient.
+            group: Channel/group link, or username.
+
+        Returns:
+            bool: True, if group/channel is private, else False.
+        """
+        try:
+            entity = await client.get_entity(chat)
+
+            if isinstance(entity, Channel):
+                try:
+                    if entity.join_request:
+                        return True
+                    return not entity.username
+                except UserNotParticipantError:
+                    return True
+                except ChatAdminRequiredError:
+                    return True
+
+            return False
+
+        except InviteHashInvalidError:
+            return True
+        except ChatAdminRequiredError:
+            return True
+        except Exception as e:
+            if "you are not part of" in str(e):
+                return True
+            if "A wait of" in str(e):
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}, ожидание {e.seconds} секунд",
+                    style="yellow"
+                )
+                return
+            logger.error(f"Ошибка при определении типа группы/канала {chat}: {e}")
+            console.log(f"Ошибка при определении типа группы/канала {chat}: {e}", style="red")
             return False
