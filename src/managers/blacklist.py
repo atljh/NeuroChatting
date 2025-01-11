@@ -18,8 +18,8 @@ class BlackList:
     def add_to_blacklist(
         account_phone: str,
         group: str
-    ) -> None:
-        FileManager.add_to_blacklist(
+    ) -> bool:
+        return FileManager.add_to_blacklist(
             account_phone,
             group
         )

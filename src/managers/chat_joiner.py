@@ -46,6 +46,7 @@ class ChatJoiner:
             client: The Telethon client.
             join_delay: A tuple (min_delay, max_delay) for random delay before joining.
         """
+        self.blacklist = BlackList()
         self.config = config
 
     async def join(
@@ -145,14 +146,15 @@ class ChatJoiner:
             self.channels.remove(channel)
             console.log(
                 f"Такого канала не существует или ссылка истекла: {channel}",
-                style="red"
+                style="yellow"
             )
         except Exception:
             try:
                 await self._random_delay()
                 await client(ImportChatInviteRequest(channel[6:]))
                 console.log(
-                    f"Аккаунт {account_phone} присоединился к приватному каналу {channel}"
+                    f"Аккаунт {account_phone} присоединился к приватному каналу {channel}",
+                    style="green"
                 )
                 return True
             except FloodWaitError as e:
@@ -178,12 +180,13 @@ class ChatJoiner:
                 elif "is already" in str(e):
                     return
                 else:
-                    console.log(f"Ошибка при присоединении к каналу {channel}: {e}")
+                    logger.error(f"Error while trying to join channel {channel}: {e}")
+                    console.log(f"Ошибка при присоединении к каналу {channel}: {e}", style="red")
                     return
         try:
             await self._random_delay()
             await client(JoinChannelRequest(channel))
-            console.log(f"Аккаунт присоединился к каналу {channel}")
+            console.log(f"Аккаунт присоединился к каналу {channel}", style="green")
         except Exception as e:
             if "A wait of" in str(e):
                 console.log(
@@ -195,7 +198,8 @@ class ChatJoiner:
                 console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
                 return
             else:
-                console.log(f"Ошибка при подписке на канал {channel}: {e}")
+                logger.error(f"Error while trying to join channel {channel}: {e}")
+                console.log(f"Ошибка при подписке на канал {channel}: {e}", style="red")
                 return
 
     async def _join_group(
@@ -234,7 +238,7 @@ class ChatJoiner:
                         f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
                         style="red"
                     )
-                    BlackList.add_to_blacklist(account_phone, group)
+                    self.blacklist.add_to_blacklist(account_phone, group)
                     return "SKIP"
                 elif "successfully requested to join" in str(e):
                     console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
@@ -266,7 +270,7 @@ class ChatJoiner:
                 return "SKIP"
             elif "The chat is invalid" in str(e):
                 console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
-                BlackList.add_to_blacklist(account_phone, group)
+                self.blacklist.add_to_blacklist(account_phone, group)
                 return "SKIP"
             else:
                 logger.error(f"Error joining group {group}: {e}")
@@ -299,7 +303,7 @@ class ChatJoiner:
                     f"Аккаунт {account_phone} забанен в чате {chat.title} добавляем в черный список",
                     style="red"
                 )
-                BlackList.add_to_blacklist(account_phone, chat_link)
+                self.blacklist.add_to_blacklist(account_phone, chat_link)
                 return "SKIP"
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
