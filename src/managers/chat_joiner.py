@@ -15,7 +15,6 @@ from telethon.errors.rpcerrorlist import (
 )
 from telethon.tl.functions.channels import (
     JoinChannelRequest,
-    GetFullChannelRequest
 )
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
@@ -75,9 +74,8 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
-        res = await self.is_private_chat(client, chat, account_phone)
         if (await self.is_member(client, chat, account_phone)):
-            return
+            return JoinStatus.ALREADY_JOINED
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
 
@@ -150,51 +148,65 @@ class ChatJoiner:
         Returns:
             bool: True if joined successfully, False otherwise.
         """
+        is_private = await self.is_private_chat(
+            client, channel, account_phone
+        )
+        if is_private:
+            return await self._join_private_channel(
+                client, account_phone, channel
+            )
+        else:
+            return await self._join_public_channel(
+                client, account_phone, channel
+            )
+
+    async def _join_private_channel(
+        self,
+        client: TelegramClient,
+        account_phone: str,
+        channel: str
+    ) -> bool:
         try:
-            is_member = await self.is_member(client, channel, account_phone)
-            if is_member:
-                return "OK"
-        except InviteHashExpiredError:
-            self.channels.remove(channel)
+            await self._random_delay()
+            await client(ImportChatInviteRequest(channel))
             console.log(
-                f"Такого канала не существует или ссылка истекла: {channel}",
+                f"Аккаунт {account_phone} присоединился к приватному каналу {channel}",
+                style="green"
+            )
+            return "OK"
+        except FloodWaitError as e:
+            console.log(
+                f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                 style="yellow"
             )
-        except Exception:
-            try:
-                await self._random_delay()
-                await client(ImportChatInviteRequest(channel))
+            return "SKIP"
+        except Exception as e:
+            console.log(e, style='red')
+            if "is not valid anymore" in str(e):
                 console.log(
-                    f"Аккаунт {account_phone} присоединился к приватному каналу {channel}",
-                    style="green"
-                )
-                return True
-            except FloodWaitError as e:
-                console.log(
-                    f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
+                    f"Вы забанены в канале {channel}, или такого канала не существует",
                     style="yellow"
                 )
-                return "SKIP"
-            except Exception as e:
-                console.log(e, style='red')
-                if "is not valid anymore" in str(e):
-                    console.log(
-                        f"Вы забанены в канале {channel}, или такого канала не существует",
-                        style="yellow"
-                    )
-                    return "OK"
-                elif "A wait of" in str(e):
-                    console.log(
-                        f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
-                        style="yellow"
-                    )
-                    return
-                elif "is already" in str(e):
-                    return
-                else:
-                    logger.error(f"Error while trying to join channel {channel}: {e}")
-                    console.log(f"Ошибка при присоединении к каналу {channel}: {e}", style="red")
-                    return
+                return "OK"
+            elif "A wait of" in str(e):
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
+                    style="yellow"
+                )
+                return
+            elif "is already" in str(e):
+                return
+            else:
+                logger.error(f"Error while trying to join channel {channel}: {e}")
+                console.log(f"Ошибка при присоединении к каналу {channel}: {e}", style="red")
+                return
+
+    async def _join_public_channel(
+            self,
+            client: TelegramClient,
+            account_phone: str,
+            channel: str
+    ) -> bool:
         try:
             await self._random_delay()
             await client(JoinChannelRequest(channel))
