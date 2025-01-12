@@ -12,7 +12,7 @@ class Config(BaseModel):
         default="Дружелюбный",
         description="Тон сообщения"
     )
-    join_group_delay: Tuple[int, int] = Field(
+    join_delay: Tuple[int, int] = Field(
         default=(10, 20),
         description="Диапазон задержки перед подпиской на чат"
     )

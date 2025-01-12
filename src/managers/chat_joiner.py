@@ -88,7 +88,7 @@ class ChatJoiner:
         """
         Sleeps for a random duration between min_delay and max_delay.
         """
-        min_delay, max_delay = self.config.join_group_delay
+        min_delay, max_delay = self.config.join_delay
         delay = random.randint(min_delay, max_delay)
         console.log(f"Задержка перед вступлением в чат: {delay} секунд")
         await asyncio.sleep(delay)
