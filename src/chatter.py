@@ -3,7 +3,9 @@ from pathlib import Path
 
 from config import Config
 from src.thon import BaseThon
-from src.managers import ChatManager, ChatJoiner, FileManager
+from src.managers import (
+    ChatManager, ChatJoiner, FileManager, JoinStatus
+)
 from src.logger import logger, console
 
 
@@ -37,9 +39,66 @@ class Chatter(BaseThon):
 
     async def _join_groups(self) -> None:
         for group in self.file_manager.read_groups():
-            await self.chat_joiner.join(
+            status = await self.chat_joiner.join(
                 self.client, self.account_phone, group
             )
+            await self._handle_join_status(
+                status, self.account_phone, group
+            )
+
+    async def _handle_join_status(
+        self,
+        status: JoinStatus,
+        account_phone: str,
+        chat: str
+    ) -> None:
+        """
+        Handle join chat status.
+
+        Args:
+            status: JoinStatus
+            account_phone: str
+            chat: str
+        """
+        match status:
+            case JoinStatus.OK:
+                console.log(
+                    f"Аккаунт {account_phone} успешно вступил в {chat}",
+                    style="green"
+                )
+            case JoinStatus.SKIP:
+                console.log(
+                    f"Ссылка на чат {chat} не рабочая или такого чата не существует",
+                    style="yellow"
+                )
+            case JoinStatus.BANNED:
+                console.log(
+                    f"Аккаунт {account_phone} забанен в чате {chat}, или ссылка не действительная",
+                    style="yellow"
+                )
+            case JoinStatus.FLOOD:
+                console.log(
+                    f"Слишком много запросов от аккаунта {account_phone}",
+                    style="yellow"
+                )
+            case JoinStatus.ALREADY_JOINED:
+                console.log(
+                    f"Аккаунт {account_phone} уже состоит в чате {chat}",
+                    style="green"
+                )
+            case JoinStatus.REQUEST_SEND:
+                console.log(
+                    f"Заявка на подписку в чат {chat} уже отправлена",
+                    style="yellow"
+                )
+            case JoinStatus.ERROR:
+                console.log(
+                    f"Произошла ошибка при вступлении в чат {account_phone}: {chat}",
+                    style="red"
+                )
+            case _:
+                logger.error(f"Неизвестный статус: {status}")
+                console.log(f"Неизвестный статус: {status}")
 
     async def _start_chat_handler(self):
         try:
