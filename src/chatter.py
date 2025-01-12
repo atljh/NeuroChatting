@@ -100,7 +100,7 @@ class Chatter(BaseThon):
                 )
             case JoinStatus.ERROR:
                 console.log(
-                    f"Произошла ошибка при вступлении в чат {account_phone}: {chat}",
+                    f"Произошла ошибка при вступлении в чат {chat}, {account_phone}",
                     style="red"
                 )
             case _:

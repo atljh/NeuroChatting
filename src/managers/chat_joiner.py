@@ -3,7 +3,7 @@ import asyncio
 from enum import Enum
 
 from telethon import TelegramClient
-from telethon.tl.types import Channel, Chat
+from telethon.tl.types import Channel, Chat, ChatInviteAlready
 from telethon.errors import (
     UserNotParticipantError,
     FloodWaitError,
@@ -80,11 +80,6 @@ class ChatJoiner:
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
         user_in_chat = await self.is_member(client, chat)
-        is_private = await self.is_private_chat(
-            client, chat
-        )
-        console.log(chat, is_private, chat_type)
-        return
         if isinstance(user_in_chat, JoinStatus):
             return user_in_chat
         if user_in_chat:
@@ -108,8 +103,6 @@ class ChatJoiner:
         chat_link = chat_link.split("?")[0]
         if "+" in chat_link:
             chat_link = chat_link.split('+')[1]
-        if "joinchat" in chat_link:
-            chat_link = chat_link.split("/")[2]
         return chat_link
 
     async def detect_chat(
@@ -126,8 +119,23 @@ class ChatJoiner:
             ChatType: Chat type (CHANNEL, GROUP or UNKNOWN).
         """
         try:
-            entity = await client.get_entity(chat_link)
+            if "joinchat" in chat_link:
+                hash = chat_link.split("/")[-1]
+                res = await client(CheckChatInviteRequest(hash=hash))
 
+                if isinstance(res, ChatInviteAlready):
+                    entity = await client.get_entity(res.chat)
+                    if isinstance(entity, Channel):
+                        return ChatType.CHANNEL if not entity.megagroup else ChatType.GROUP
+                    elif isinstance(entity, Chat):
+                        return ChatType.GROUP
+                    else:
+                        return ChatType.UNKNOWN
+
+                if hasattr(res, 'channel') and res.channel:
+                    return ChatType.CHANNEL
+
+            entity = await client.get_entity(chat_link)
             if isinstance(entity, Channel):
                 if entity.megagroup:
                     return ChatType.GROUP
@@ -178,7 +186,8 @@ class ChatJoiner:
         account_phone: str,
         channel: str
     ) -> JoinStatus:
-
+        if "joinchat" in channel:
+            channel = channel.split("/")[2]
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(channel))
