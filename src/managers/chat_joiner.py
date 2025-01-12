@@ -178,7 +178,7 @@ class ChatJoiner:
                 f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                 style="yellow"
             )
-            return JoinStatus.MUTE
+            return JoinStatus.FLOOD
         except Exception as e:
             console.log(e, style='red')
             if "is not valid anymore" in str(e):
@@ -186,13 +186,13 @@ class ChatJoiner:
                     f"Вы забанены в канале {channel}, или такого канала не существует",
                     style="yellow"
                 )
-                return JoinStatus.SKIP
+                return JoinStatus.BANNED
             elif "A wait of" in str(e):
                 console.log(
                     f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
                     style="yellow"
                 )
-                return JoinStatus.MUTE
+                return JoinStatus.FLOOD
             elif "is already" in str(e):
                 return JoinStatus.OK
             else:
@@ -217,21 +217,21 @@ class ChatJoiner:
                     f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
                     style="yellow"
                 )
-                return JoinStatus.MUTE
+                return JoinStatus.FLOOD
             elif "is not valid" in str(e):
                 console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
                 return JoinStatus.SKIP
             else:
                 logger.error(f"Error while trying to join channel {channel}: {e}")
                 console.log(f"Ошибка при подписке на канал {channel}: {e}", style="red")
-                return JoinStatus.MUTE
+                return JoinStatus.ERROR
 
     async def _join_group(
         self,
         client: TelegramClient,
         account_phone: str,
         group: str
-    ) -> str:
+    ) -> JoinStatus:
         """
         Joins a group with the specified account.
 
@@ -241,7 +241,7 @@ class ChatJoiner:
             group: The group to join.
 
         Returns:
-            str: "OK" on success, "SKIP" on failure.
+            JoinStatus: The result of the operation.
         """
         is_private = await self.is_private_chat(
             client, group, account_phone
@@ -259,7 +259,7 @@ class ChatJoiner:
             client: TelegramClient,
             account_phone: str,
             group: str
-    ) -> bool:
+    ) -> JoinStatus:
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(group))
@@ -267,54 +267,52 @@ class ChatJoiner:
                 f"Аккаунт {account_phone} присоединился к приватному чату {group}",
                 style="green"
             )
-            return "OK"
+            return JoinStatus.OK
         except Exception as e:
             if "is not valid anymore" in str(e):
                 console.log(
                     f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
                     style="red"
                 )
-                self.blacklist.add_to_blacklist(account_phone, group)
-                return "SKIP"
+                return JoinStatus.BANNED
             elif "successfully requested to join" in str(e):
                 console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
-                return "SKIP"
+                return JoinStatus.SKIP
             elif "A wait of" in str(e):
                 console.log(
                     f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                     style="yellow"
                 )
-                return "SKIP"
+                return JoinStatus.FLOOD
 
     async def _join_public_group(
             self,
             client: TelegramClient,
             account_phone: str,
             group: str
-    ) -> bool:
+    ) -> JoinStatus:
         try:
             await self._random_delay()
             await client(JoinChannelRequest(group))
             console.log(f"Аккаунт присоединился к группе {group}", style="green")
-            return "OK"
+            return JoinStatus.OK
         except FloodWaitError as e:
             console.log(
                 f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                 style="yellow"
             )
-            return "SKIP"
+            return JoinStatus.FLOOD
         except Exception as e:
             if "successfully requested to join" in str(e):
                 console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
-                return "SKIP"
+                return JoinStatus.SKIP
             elif "The chat is invalid" in str(e):
                 console.log(f"Чата {group} не существует или ссылка истекла.", style="yellow")
-                self.blacklist.add_to_blacklist(account_phone, group)
-                return "SKIP"
+                return JoinStatus.SKIP
             else:
                 logger.error(f"Ошибка при присоединении к группе {group}: {e}")
                 console.log(f"Ошибка при присоединении к группе {group}: {e}", style="red")
-                return "SKIP"
+                return JoinStatus.ERROR
 
     async def is_member(
         self,
