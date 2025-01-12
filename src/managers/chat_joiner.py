@@ -1,5 +1,5 @@
-import asyncio
 import random
+import asyncio
 from enum import Enum
 
 from telethon import TelegramClient
@@ -18,9 +18,9 @@ from telethon.tl.functions.channels import (
 )
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
-from src.logger import logger, console
-from src.managers import BlackList
 from config import Config
+from src.managers import BlackList
+from src.logger import logger, console
 
 
 class ChatType(Enum):
@@ -74,7 +74,8 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
-        if (await self.is_member(client, chat, account_phone)):
+        user_in_chat = await self.is_member(client, chat, account_phone)
+        if user_in_chat:
             return JoinStatus.ALREADY_JOINED
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
@@ -137,7 +138,7 @@ class ChatJoiner:
         client: TelegramClient,
         account_phone: str,
         channel: str
-    ) -> str:
+    ) -> JoinStatus:
         """
         Joins a public channel.
 
@@ -145,7 +146,7 @@ class ChatJoiner:
             channel: The channel username or link.
 
         Returns:
-            bool: True if joined successfully, False otherwise.
+            JoinStatus: The result of the operation.
         """
         is_private = await self.is_private_chat(
             client, channel, account_phone
@@ -163,7 +164,7 @@ class ChatJoiner:
         client: TelegramClient,
         account_phone: str,
         channel: str
-    ) -> bool:
+    ) -> JoinStatus:
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(channel))
@@ -171,13 +172,13 @@ class ChatJoiner:
                 f"Аккаунт {account_phone} присоединился к приватному каналу {channel}",
                 style="green"
             )
-            return "OK"
+            return JoinStatus.OK
         except FloodWaitError as e:
             console.log(
                 f"Слишком много запросов от аккаунта {account_phone}. Флуд {e.seconds} секунд.",
                 style="yellow"
             )
-            return "SKIP"
+            return JoinStatus.MUTE
         except Exception as e:
             console.log(e, style='red')
             if "is not valid anymore" in str(e):
@@ -185,44 +186,45 @@ class ChatJoiner:
                     f"Вы забанены в канале {channel}, или такого канала не существует",
                     style="yellow"
                 )
-                return "OK"
+                return JoinStatus.SKIP
             elif "A wait of" in str(e):
                 console.log(
                     f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
                     style="yellow"
                 )
-                return
+                return JoinStatus.MUTE
             elif "is already" in str(e):
-                return
+                return JoinStatus.OK
             else:
                 logger.error(f"Error while trying to join channel {channel}: {e}")
                 console.log(f"Ошибка при присоединении к каналу {channel}: {e}", style="red")
-                return
+                return JoinStatus.ERROR
 
     async def _join_public_channel(
             self,
             client: TelegramClient,
             account_phone: str,
             channel: str
-    ) -> bool:
+    ) -> JoinStatus:
         try:
             await self._random_delay()
             await client(JoinChannelRequest(channel))
             console.log(f"Аккаунт присоединился к каналу {channel}", style="green")
+            return JoinStatus.OK
         except Exception as e:
             if "A wait of" in str(e):
                 console.log(
                     f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.",
                     style="yellow"
                 )
-                return
+                return JoinStatus.MUTE
             elif "is not valid" in str(e):
                 console.log("Ссылка на чат не рабочая или такого чата не существует", style="yellow")
-                return
+                return JoinStatus.SKIP
             else:
                 logger.error(f"Error while trying to join channel {channel}: {e}")
                 console.log(f"Ошибка при подписке на канал {channel}: {e}", style="red")
-                return
+                return JoinStatus.MUTE
 
     async def _join_group(
         self,
@@ -315,10 +317,10 @@ class ChatJoiner:
                 return "SKIP"
 
     async def is_member(
-            self,
-            client: TelegramClient,
-            chat_link: str,
-            account_phone: str
+        self,
+        client: TelegramClient,
+        chat_link: str,
+        account_phone: str
     ) -> bool:
         """
         Checks if the user is a member of the channel or group.
