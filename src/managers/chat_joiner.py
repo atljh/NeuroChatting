@@ -19,7 +19,6 @@ from telethon.tl.functions.channels import (
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from config import Config
-from src.managers import BlackList
 from src.logger import logger, console
 
 
@@ -54,7 +53,6 @@ class ChatJoiner:
             client: The Telethon client.
             join_delay: A tuple (min_delay, max_delay) for random delay before joining.
         """
-        self.blacklist = BlackList()
         self.config = config
 
     async def join(
@@ -151,7 +149,7 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         is_private = await self.is_private_chat(
-            client, channel, account_phone
+            client, channel
         )
         if isinstance(is_private, JoinStatus):
             return is_private
@@ -225,7 +223,7 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         is_private = await self.is_private_chat(
-            client, group, account_phone
+            client, group
         )
         if isinstance(is_private, JoinStatus):
             return is_private

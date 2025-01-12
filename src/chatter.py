@@ -4,7 +4,8 @@ from pathlib import Path
 from config import Config
 from src.thon import BaseThon
 from src.managers import (
-    ChatManager, ChatJoiner, FileManager, JoinStatus
+    ChatManager, ChatJoiner, FileManager,
+    JoinStatus, BlackList
 )
 from src.logger import logger, console
 
@@ -21,15 +22,15 @@ class Chatter(BaseThon):
         self.item = item
         self.config = config
         self.json_file = json_file
-        self.chat_manager = ChatManager(config)
-        self.chat_joiner = ChatJoiner(config)
+        self.blacklist = BlackList()
         self.file_manager = FileManager()
+        self.chat_joiner = ChatJoiner(config)
+        self.chat_manager = ChatManager(config)
         self.account_phone = os.path.basename(self.item).split('.')[0]
 
     async def _start(self):
         console.log(
             f"Аккаунт {self.account_phone} начал работу",
-            style="green"
         )
         await self._join_groups()
         console.log(
@@ -39,6 +40,11 @@ class Chatter(BaseThon):
 
     async def _join_groups(self) -> None:
         for group in self.file_manager.read_groups():
+            if self.blacklist.is_group_blacklisted(
+                self.account_phone, group
+            ):
+                console.log('Группа в черном списке')
+                continue
             status = await self.chat_joiner.join(
                 self.client, self.account_phone, group
             )
@@ -76,6 +82,7 @@ class Chatter(BaseThon):
                     f"Аккаунт {account_phone} забанен в чате {chat}, или ссылка не действительная",
                     style="yellow"
                 )
+                self.blacklist.add_to_blacklist(account_phone, chat)
             case JoinStatus.FLOOD:
                 console.log(
                     f"Слишком много запросов от аккаунта {account_phone}",
