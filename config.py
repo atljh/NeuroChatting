@@ -54,7 +54,7 @@ class ConfigManager:
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_data = yaml.safe_load(f)
 
-                join_delay = config_data['settings'].get('join_group_delay')
+                join_delay = config_data['settings'].get('join_delay')
                 send_message_delay = config_data['settings'].get(
                     'send_message_delay'
                 )
@@ -64,7 +64,7 @@ class ConfigManager:
                     and '-' in join_delay
                 ):
                     min_delay, max_delay = map(int, join_delay.split('-'))
-                    config_data['settings']['join_group_delay'] = (min_delay, max_delay)
+                    config_data['settings']['join_delay'] = (min_delay, max_delay)
 
                 if (
                     isinstance(send_message_delay, str)

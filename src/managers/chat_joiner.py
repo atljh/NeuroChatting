@@ -74,6 +74,8 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat_type = await self.detect_chat(client, chat)
+        is_private_chat = await self.is_private_chat(client, chat, account_phone)
+        console.log(chat, is_private_chat)
         user_in_chat = await self.is_member(client, chat, account_phone)
         if user_in_chat:
             return JoinStatus.ALREADY_JOINED
@@ -165,6 +167,8 @@ class ChatJoiner:
         account_phone: str,
         channel: str
     ) -> JoinStatus:
+        if "+" in channel:
+            channel = channel.split('+')[1]
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(channel))
@@ -260,6 +264,8 @@ class ChatJoiner:
             account_phone: str,
             group: str
     ) -> JoinStatus:
+        if "+" in group:
+            group = group.split('+')[1]
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(group))
@@ -271,12 +277,13 @@ class ChatJoiner:
         except Exception as e:
             if "is not valid anymore" in str(e):
                 console.log(
-                    f"Аккаунт {account_phone} забанен в чате {group}. Добавляем в черный список.",
+                    f"Аккаунт {account_phone} забанен в чате {group}, или ссылка не действительная. "
+                    "Добавляем в черный список.",
                     style="red"
                 )
                 return JoinStatus.BANNED
             elif "successfully requested to join" in str(e):
-                console.log(f"Заявка на подписку в {group} уже отправлена.", style="yellow")
+                console.log(f"Заявка на подписку в {group} отправлена.", style="yellow")
                 return JoinStatus.SKIP
             elif "A wait of" in str(e):
                 console.log(
@@ -317,7 +324,7 @@ class ChatJoiner:
     async def is_member(
         self,
         client: TelegramClient,
-        chat_link: str,
+        chat: str,
         account_phone: str
     ) -> bool:
         """
@@ -330,8 +337,8 @@ class ChatJoiner:
             bool: True if the user is a member, False otherwise.
         """
         try:
-            chat = await client.get_entity(chat_link)
-            await client.get_permissions(chat, "me")
+            chat_entity = await client.get_entity(chat)
+            await client.get_permissions(chat_entity, "me")
             return True
         except UserNotParticipantError:
             return False
@@ -344,11 +351,13 @@ class ChatJoiner:
         except Exception as e:
             if "private and you lack permission" in str(e):
                 console.log(
-                    f"Аккаунт {account_phone} забанен в чате {chat.title} добавляем в черный список",
+                    f"Аккаунт {account_phone} забанен в чате {chat_entity.title} добавляем в черный список",
                     style="red"
                 )
-                self.blacklist.add_to_blacklist(account_phone, chat_link)
+                self.blacklist.add_to_blacklist(account_phone, chat)
                 return "SKIP"
+            elif "that you are not" in str(e):
+                return False
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
             return False
