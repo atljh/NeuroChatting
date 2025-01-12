@@ -153,6 +153,8 @@ class ChatJoiner:
         is_private = await self.is_private_chat(
             client, channel, account_phone
         )
+        if isinstance(is_private, JoinStatus):
+            return is_private
         if is_private:
             return await self._join_private_channel(
                 client, account_phone, channel
@@ -184,7 +186,6 @@ class ChatJoiner:
                 return JoinStatus.OK
             else:
                 logger.error(f"Error while trying to join channel {account_phone}, {channel}: {e}")
-                console.log(f"Ошибка при присоединении к каналу {account_phone}, {channel}: {e}", style="red")
                 return JoinStatus.ERROR
 
     async def _join_public_channel(
@@ -204,7 +205,6 @@ class ChatJoiner:
                 return JoinStatus.SKIP
             else:
                 logger.error(f"Error while trying to join channel {account_phone}, {channel}: {e}")
-                console.log(f"Ошибка при подписке на канал {account_phone}, {channel}: {e}", style="red")
                 return JoinStatus.ERROR
 
     async def _join_group(
@@ -227,6 +227,8 @@ class ChatJoiner:
         is_private = await self.is_private_chat(
             client, group, account_phone
         )
+        if isinstance(is_private, JoinStatus):
+            return is_private
         if is_private:
             return await self._join_private_group(
                 client, account_phone, group
@@ -255,8 +257,7 @@ class ChatJoiner:
             elif "A wait of" in str(e):
                 return JoinStatus.FLOOD
             else:
-                logger.error(f"Ошибка при присоединении к группе {account_phone}, {group}: {e}")
-                console.log(f"Ошибка при присоединении к группе {account_phone}, {group}: {e}", style="red")
+                logger.error(f"Error trying to join group {account_phone}, {group}: {e}")
                 return JoinStatus.ERROR
 
     async def _join_public_group(
@@ -277,8 +278,7 @@ class ChatJoiner:
             elif "The chat is invalid" in str(e):
                 return JoinStatus.SKIP
             else:
-                logger.error(f"Ошибка при присоединении к группе {account_phone}, {group}: {e}")
-                console.log(f"Ошибка при присоединении к группе {account_phone}, {group}: {e}", style="red")
+                logger.error(f"Error trying to join group {account_phone}, {group}: {e}")
                 return JoinStatus.ERROR
 
     async def is_member(
@@ -316,8 +316,7 @@ class ChatJoiner:
         self,
         client: TelegramClient,
         chat: str,
-        account_phone: str
-    ) -> bool:
+    ) -> bool | JoinStatus:
         """
         Checks if group or chat is private
 
@@ -348,11 +347,7 @@ class ChatJoiner:
             if "you are not part of" in str(e):
                 return True
             if "A wait of" in str(e):
-                console.log(
-                    f"Слишком много запросов от аккаунта {account_phone}, ожидание {e.seconds} секунд",
-                    style="yellow"
-                )
-                return
+                return JoinStatus.FLOOD
             logger.error(f"Error while trying to detect type of group/channel {chat}: {e}")
             console.log(f"Ошибка при определении типа группы/канала {chat}: {e}", style="red")
             return False
