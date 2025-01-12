@@ -43,7 +43,7 @@ class Chatter(BaseThon):
             if self.blacklist.is_group_blacklisted(
                 self.account_phone, group
             ):
-                console.log('Группа в черном списке')
+                console.log(f"Группа {group} в черном списке, пропускаем")
                 continue
             status = await self.chat_joiner.join(
                 self.client, self.account_phone, group
@@ -104,7 +104,7 @@ class Chatter(BaseThon):
                     style="red"
                 )
             case _:
-                logger.error(f"Неизвестный статус: {status}")
+                logger.error(f"Unknown JoinStatus: {status}")
                 console.log(f"Неизвестный статус: {status}")
 
     async def _start_chat_handler(self):

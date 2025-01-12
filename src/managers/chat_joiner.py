@@ -14,9 +14,12 @@ from telethon.errors.rpcerrorlist import (
     InviteHashExpiredError
 )
 from telethon.tl.functions.channels import (
-    JoinChannelRequest,
+    JoinChannelRequest
 )
-from telethon.tl.functions.messages import ImportChatInviteRequest
+from telethon.tl.functions.messages import (
+    ImportChatInviteRequest,
+    CheckChatInviteRequest
+)
 
 from config import Config
 from src.logger import logger, console
@@ -59,7 +62,7 @@ class ChatJoiner:
         self,
         client: TelegramClient,
         account_phone: str,
-        chat: str
+        chat_link: str
     ) -> JoinStatus:
         """
         Joins a chat (channel or group).
@@ -72,14 +75,20 @@ class ChatJoiner:
         Returns:
             JoinStatus: The result of the operation.
         """
+        chat = self.clean_chat_link(chat_link)
         chat_type = await self.detect_chat(client, chat)
+        if chat_type == ChatType.UNKNOWN:
+            return JoinStatus.ERROR
         user_in_chat = await self.is_member(client, chat)
+        is_private = await self.is_private_chat(
+            client, chat
+        )
+        console.log(chat, is_private, chat_type)
+        return
         if isinstance(user_in_chat, JoinStatus):
             return user_in_chat
         if user_in_chat:
             return JoinStatus.ALREADY_JOINED
-        if chat_type == ChatType.UNKNOWN:
-            return JoinStatus.ERROR
         if chat_type == ChatType.CHANNEL:
             return await self._join_channel(client, account_phone, chat)
         elif chat_type == ChatType.GROUP:
@@ -97,12 +106,16 @@ class ChatJoiner:
         if chat_link.startswith("https://t.me/"):
             chat_link = chat_link[13:]
         chat_link = chat_link.split("?")[0]
+        if "+" in chat_link:
+            chat_link = chat_link.split('+')[1]
+        if "joinchat" in chat_link:
+            chat_link = chat_link.split("/")[2]
         return chat_link
 
     async def detect_chat(
         self,
         client: TelegramClient,
-        chat: str
+        chat_link: str
     ) -> ChatType:
         """
         Detect chat type
@@ -113,9 +126,7 @@ class ChatJoiner:
             ChatType: Chat type (CHANNEL, GROUP or UNKNOWN).
         """
         try:
-            chat = self.clean_chat_link(chat)
-
-            entity = await client.get_entity(chat)
+            entity = await client.get_entity(chat_link)
 
             if isinstance(entity, Channel):
                 if entity.megagroup:
@@ -129,8 +140,8 @@ class ChatJoiner:
         except Exception as e:
             if "you are not part of" in str(e):
                 return ChatType.GROUP
-            logger.error(f"Error trying to determine chat type {chat}: {e}")
-            console.log(f"Ошибка при определении типа чата {chat}: {e}", style="red")
+            logger.error(f"Error trying to determine chat type {chat_link}: {e}")
+            console.log(f"Ошибка при определении типа чата {chat_link}", style="red")
             return ChatType.UNKNOWN
 
     async def _join_channel(
@@ -167,8 +178,7 @@ class ChatJoiner:
         account_phone: str,
         channel: str
     ) -> JoinStatus:
-        if "+" in channel:
-            channel = channel.split('+')[1]
+
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(channel))
@@ -241,8 +251,6 @@ class ChatJoiner:
             account_phone: str,
             group: str
     ) -> JoinStatus:
-        if "+" in group:
-            group = group.split('+')[1]
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(group))
