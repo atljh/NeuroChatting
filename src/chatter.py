@@ -27,6 +27,7 @@ class Chatter(BaseThon):
         self.chat_joiner = ChatJoiner(config)
         self.chat_manager = ChatManager(config)
         self.account_phone = os.path.basename(self.item).split('.')[0]
+        self.groups = []
 
     async def _start(self):
         console.log(
@@ -36,6 +37,7 @@ class Chatter(BaseThon):
         console.log(
             f"Аккаунт {self.account_phone} начал мониторинг групп"
         )
+        console.log(self.groups)
         await self._start_chat_handler()
 
     async def _join_groups(self) -> None:
@@ -72,6 +74,7 @@ class Chatter(BaseThon):
                     f"Аккаунт {account_phone} успешно вступил в {chat}",
                     style="green"
                 )
+                self.groups.append(chat)
             case JoinStatus.SKIP:
                 console.log(
                     f"Ссылка на чат {chat} не рабочая или такого чата не существует",
@@ -93,6 +96,7 @@ class Chatter(BaseThon):
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",
                     style="green"
                 )
+                self.groups.append(chat)
             case JoinStatus.REQUEST_SEND:
                 console.log(
                     f"Заявка на подписку в чат {chat} уже отправлена",
@@ -110,7 +114,7 @@ class Chatter(BaseThon):
     async def _start_chat_handler(self):
         try:
             await self.chat_manager.monitor_groups(
-                self.client, self.account_phone
+                self.client, self.account_phone, self.groups
             )
         except Exception as e:
             logger.error(f"Ошибка: {e}")
