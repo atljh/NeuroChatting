@@ -1,7 +1,6 @@
 import random
 import asyncio
 import logging
-from typing import Dict, List
 
 from openai import OpenAI
 from telethon import TelegramClient, events
@@ -12,7 +11,6 @@ from telethon.errors.rpcerrorlist import (
 )
 
 from src.logger import console, logger
-from src.managers.file_manager import FileManager
 from src.managers.prompt_manager import PromptManager
 
 
@@ -36,7 +34,6 @@ class ChatManager:
         self.config = config
         self._openai_client = None
         self._comment_manager = None
-        self.groups = set()
         self.event_handlers = {}
 
     @property
@@ -44,19 +41,11 @@ class ChatManager:
         return self.config.prompt_tone
 
     @property
-    def sleep_duration(self) -> int:
-        return self.config.sleep_duration
+    def message_limit(self) -> int:
+        return self.config.message_limit
 
     @property
-    def comment_limit(self) -> int:
-        return self.config.comment_limit
-
-    @property
-    def join_channel_delay(self) -> tuple[int, int]:
-        return self.config.join_channel_delay
-
-    @property
-    def send_comment_delay(self) -> tuple[int, int]:
+    def send_message_delay(self) -> tuple[int, int]:
         return self.config.send_message_delay
 
     @property
@@ -146,12 +135,11 @@ class ChatManager:
             groups: List of groups (link or username).
         """
         try:
-            self.groups.update(groups)
-
-            @client.on(events.NewMessage)
-            async def new_message_listener(event):
-                await self.handle_new_message(event, account_phone)
-
+            for group in groups:
+                client.add_event_handler(
+                    lambda event: self.handle_new_message(event, account_phone),
+                    events.NewMessage(chats=group)
+                )
         except Exception as e:
             console.log("Ошибка при запуске мониторинга групп", style="red")
             logger.error(f"Ошибка при запуске мониторинга групп: {e}")
