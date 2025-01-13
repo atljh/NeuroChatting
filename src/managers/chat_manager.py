@@ -5,10 +5,14 @@ import logging
 from openai import OpenAI
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError
-from telethon.errors.rpcerrorlist import (
-    UserBannedInChannelError,
-    MsgIdInvalidError
+from telethon.errors import (
+    FloodWaitError, UserBannedInChannelError, UserNotParticipantError, ChatWriteForbiddenError,
+    ChatAdminRequiredError, UserIsBlockedError, InputUserDeactivatedError,
+    PeerFloodError, ChannelPrivateError, UsernameNotOccupiedError,
+    InviteRequestSentError, InviteHashExpiredError, ChatSendMediaForbiddenError,
+    UserDeactivatedBanError, MsgIdInvalidError
 )
+
 
 from src.logger import console, logger
 from src.managers.prompt_manager import PromptManager
@@ -67,58 +71,78 @@ class ChatManager:
         console.log(f"Задержка перед отправкой сообщения: {delay} секунд")
         await asyncio.sleep(delay)
 
-    async def send_comment(self, client, account_phone: str, channel, comment: str, message_id: int, attempts: int = 0) -> None:
-        """
-        Sends a comment to the specified channel.
-
-        Args:
-            client: The Telethon client.
-            account_phone: The phone number of the account.
-            channel: The channel to send the comment to.
-            comment: The comment text.
-            message_id: The ID of the message to reply to.
-            attempts: The number of send attempts.
-        """
+    async def send_answer(self, client, account_phone, group):
         try:
-            channel_entity = await self.get_channel_entity(client, channel)
-            if not channel_entity:
-                console.log("Channel not found or inaccessible.", style="red")
-                return
-            await client.send_message(entity=channel_entity, message=comment, comment_to=message_id)
-            console.log(f"Comment sent from account {account_phone} to channel {channel.title}", style="green")
+            group_entity = await self.get_channel_entity(client, group)
+            if not group_entity:
+                console.log(f"Группа {group} не найдена или недоступна.", style="red")
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            await client.send_message(
+                group, self.post_text,
+                parse_mode='HTML'
+            )
+            console.log(f"Сообщение отправлено от аккаунта {account_phone} в группу {group_entity.title}", style="green")
         except FloodWaitError as e:
-            logging.warning(f"Rate limit exceeded for account {account_phone}. Waiting {e.seconds} seconds.", style="yellow")
-            await asyncio.sleep(e.seconds)
-            await self.switch_to_next_account()
+            console.log(f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.", style="yellow")
+            return "MUTE"
+        except PeerFloodError:
+            console.log(f"Аккаунт {account_phone} временно заблокирован за спам. Перемещаем аккаунт в папку мут.", style="yellow")
+            return "MUTE"
         except UserBannedInChannelError:
-            console.log(f"Account {account_phone} is banned in channel {channel.title}", style="red")
-            await self.switch_to_next_account()
+            console.log(f"Аккаунт {account_phone} заблокирован в группе {group_entity.title}", style="red")
+            self.file_manager.add_to_blacklist(account_phone, group)
+            return "OK"
         except MsgIdInvalidError:
-            console.log("Channel is not linked to a chat.", style="red")
-            await self.switch_to_next_account()
+            console.log("Канал не связан с чатом", style="red")
+            self.file_manager.add_to_blacklist(account_phone, group)
+            return "OK"
+        except UserDeactivatedBanError:
+            console.log(f"Аккаунт {account_phone} забанен", style="red")
+            return "ERROR_AUTH"
+        except ChatWriteForbiddenError:
+            console.log(f"У аккаунта {account_phone} нет прав на отправку сообщений в чат.", style="yellow")
+            self.file_manager.add_to_blacklist(account_phone, group)
+            return "OK"
+        except ChatSendMediaForbiddenError:
+            console.log(f"Ошибка: запрещено отправлять фото в этом чате. Повторная отправка без картинки.", style="yellow")
+            return "OK"
         except Exception as e:
-            if "private and you lack permission" in str(e) or "You can't write" in str(e):
-                console.log(f"Channel {channel.title} is inaccessible for account {account_phone}. Skipping.", style="yellow")
-            elif "You join the discussion group before commenting" in str(e):
-                console.log("You need to join the discussion group before commenting.")
-                join_result = await self.join_discussion_group(client, channel_entity)
-                if join_result:
-                    await self.send_comment(client, account_phone, channel, comment, message_id)
-                    return
+            if "private and you lack permission" in str(e):
+                console.log(f"Группа {group_entity.title} недоступна для аккаунта {account_phone}. Пропускаем.", style="yellow")
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            elif "You can't write" in str(e):
+                console.log(f"Группа {group_entity.title} недоступна для аккаунта {account_phone}. Пропускаем.", style="yellow")
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            elif "CHAT_SEND_PHOTOS_FORBIDDEN" in str(e):
+                console.log(f"Ошибка: запрещено отправлять фото в этом чате. Повторная отправка без картинки.", style="yellow")
+                return "OK"
+            elif "A wait of" in str(e):
+                console.log(f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.", style="yellow")
+                return "MUTE"
+            elif "TOPIC_CLOSED" in str(e):
+                console.log("Чат с топиками. Пропускаем", style="yellow")
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            elif "invalid permissions" in str(e):
+                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            elif "The chat is restricted" in str(e):
+                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
+            elif "CHAT_SEND_PLAIN_FORBIDDEN" in str(e):
+                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
+                self.file_manager.add_to_blacklist(account_phone, group)
+                return "OK"
             else:
-                console.log(f"Error sending comment: {e}", style="red")
-
-            if attempts < self.MAX_SEND_ATTEMPTS:
-                console.log(f"Attempt {attempts + 1}/{self.MAX_SEND_ATTEMPTS} to send message from another account...")
-                await self.switch_to_next_account()
-                next_client = self.accounts.get(self.active_account)
-                if next_client:
-                    await self.sleep_before_send_message()
-                    await self.send_comment(next_client, account_phone, channel, comment, message_id, attempts + 1)
-                else:
-                    console.log("No available accounts for sending.", style="red")
-            else:
-                console.log(f"Failed to send message after {self.MAX_SEND_ATTEMPTS} attempts.", style="red")
+                console.log(f"Ошибка при отправке сообщения в группе {group_entity.title}, {account_phone}: {e}", style="red")
+            self.file_manager.add_to_blacklist(account_phone, group)
+            return "SKIP"
+        return "OK"
 
     async def monitor_groups(
             self,
