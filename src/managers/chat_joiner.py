@@ -79,78 +79,18 @@ class ChatJoiner:
         chat_type = await self.detect_chat(client, chat)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
+        elif isinstance(chat_type, JoinStatus):
+            return chat_type
         user_in_chat = await self.is_member(client, chat)
         if isinstance(user_in_chat, JoinStatus):
             return user_in_chat
         if user_in_chat:
             return JoinStatus.ALREADY_JOINED
+
         if chat_type == ChatType.CHANNEL:
             return await self._join_channel(client, account_phone, chat)
         elif chat_type == ChatType.GROUP:
             return await self._join_group(client, account_phone, chat)
-
-    async def _random_delay(self):
-        """
-        Sleeps for a random duration between min_delay and max_delay.
-        """
-        min_delay, max_delay = self.config.join_delay
-        delay = random.randint(min_delay, max_delay)
-        await asyncio.sleep(delay)
-
-    def clean_chat_link(self, chat_link: str) -> str:
-        if chat_link.startswith("https://t.me/"):
-            chat_link = chat_link[13:]
-        chat_link = chat_link.split("?")[0]
-        if "+" in chat_link:
-            chat_link = chat_link.split('+')[1]
-        return chat_link
-
-    async def detect_chat(
-        self,
-        client: TelegramClient,
-        chat_link: str
-    ) -> ChatType:
-        """
-        Detect chat type
-        Args:
-            chat: chat link or username.
-
-        Returns:
-            ChatType: Chat type (CHANNEL, GROUP or UNKNOWN).
-        """
-        try:
-            if "joinchat" in chat_link:
-                hash = chat_link.split("/")[-1]
-                res = await client(CheckChatInviteRequest(hash=hash))
-
-                if isinstance(res, ChatInviteAlready):
-                    entity = await client.get_entity(res.chat)
-                    if isinstance(entity, Channel):
-                        return ChatType.CHANNEL if not entity.megagroup else ChatType.GROUP
-                    elif isinstance(entity, Chat):
-                        return ChatType.GROUP
-                    else:
-                        return ChatType.UNKNOWN
-
-                if hasattr(res, 'channel') and res.channel:
-                    return ChatType.CHANNEL
-
-            entity = await client.get_entity(chat_link)
-            if isinstance(entity, Channel):
-                if entity.megagroup:
-                    return ChatType.GROUP
-                else:
-                    return ChatType.CHANNEL
-            elif isinstance(entity, Chat):
-                return ChatType.GROUP
-            else:
-                return ChatType.UNKNOWN
-        except Exception as e:
-            if "you are not part of" in str(e):
-                return ChatType.GROUP
-            logger.error(f"Error trying to determine chat type {chat_link}: {e}")
-            console.log(f"Ошибка при определении типа чата {chat_link}", style="red")
-            return ChatType.UNKNOWN
 
     async def _join_channel(
         self,
@@ -266,7 +206,7 @@ class ChatJoiner:
             return JoinStatus.OK
         except Exception as e:
             if "is not valid anymore" in str(e):
-                return JoinStatus.BANNED
+                return JoinStatus.SKIP
             elif "successfully requested to join" in str(e):
                 return JoinStatus.REQUEST_SEND
             elif "A wait of" in str(e):
@@ -366,3 +306,68 @@ class ChatJoiner:
             logger.error(f"Error while trying to detect type of group/channel {chat}: {e}")
             console.log(f"Ошибка при определении типа группы/канала {chat}: {e}", style="red")
             return False
+
+    async def _random_delay(self):
+        """
+        Sleeps for a random duration between min_delay and max_delay.
+        """
+        min_delay, max_delay = self.config.join_delay
+        delay = random.randint(min_delay, max_delay)
+        await asyncio.sleep(delay)
+
+    async def detect_chat(
+        self,
+        client: TelegramClient,
+        chat_link: str
+    ) -> ChatType | JoinStatus:
+        """
+        Detect chat type
+        Args:
+            chat: chat link or username.
+
+        Returns:
+            ChatType: Chat type (CHANNEL, GROUP or UNKNOWN) or JoinStatus
+        """
+        try:
+            if "joinchat" in chat_link:
+                hash = chat_link.split("/")[-1]
+                res = await client(CheckChatInviteRequest(hash=hash))
+
+                if isinstance(res, ChatInviteAlready):
+                    entity = await client.get_entity(res.chat)
+                    if isinstance(entity, Channel):
+                        return ChatType.CHANNEL if not entity.megagroup else ChatType.GROUP
+                    elif isinstance(entity, Chat):
+                        return ChatType.GROUP
+                    else:
+                        return ChatType.UNKNOWN
+
+                if hasattr(res, 'channel') and res.channel:
+                    return ChatType.CHANNEL
+
+            entity = await client.get_entity(chat_link)
+            if isinstance(entity, Channel):
+                if entity.megagroup:
+                    return ChatType.GROUP
+                else:
+                    return ChatType.CHANNEL
+            elif isinstance(entity, Chat):
+                return ChatType.GROUP
+            else:
+                return ChatType.UNKNOWN
+        except Exception as e:
+            if "you are not part of" in str(e):
+                return ChatType.GROUP
+            elif "A wait of" in str(e):
+                return JoinStatus.FLOOD
+            logger.error(f"Error trying to determine chat type {chat_link}: {e}")
+            console.log(f"Ошибка при определении типа чата {chat_link}", style="red")
+            return ChatType.UNKNOWN
+
+    def clean_chat_link(self, chat_link: str) -> str:
+        if chat_link.startswith("https://t.me/"):
+            chat_link = chat_link[13:]
+        chat_link = chat_link.split("?")[0]
+        # if "+" in chat_link:
+        #     chat_link = chat_link.split('+')[1]
+        return chat_link
