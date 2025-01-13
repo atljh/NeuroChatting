@@ -35,8 +35,7 @@ class Chatter(BaseThon):
         )
         await self._join_groups()
         handler_status = await self._start_chat_handler()
-        if not handler_status:
-            return
+        return handler_status
 
     async def _join_groups(self) -> None:
         for group in self.file_manager.read_groups():
@@ -112,7 +111,7 @@ class Chatter(BaseThon):
     async def _start_chat_handler(self) -> bool:
         if not len(self.groups):
             console.log("Нет групп для обработки", style="red")
-            return
+            return False
         console.log(
             f"Мониторинг групп начат для аккаунта {self.account_phone}",
             style="green"

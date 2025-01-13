@@ -60,11 +60,11 @@ class ChatManager:
             self._comment_manager = PromptManager(self.config, self.openai_client)
         return self._comment_manager
 
-    async def sleep_before_send_message(self):
+    async def sleep_before_send_message(self) -> None:
         """Random delay before sending a message."""
-        min_delay, max_delay = self.send_comment_delay
+        min_delay, max_delay = self.send_message_delay
         delay = random.randint(min_delay, max_delay)
-        console.log(f"Delay before sending message: {delay} seconds")
+        console.log(f"Задержка перед отправкой сообщения: {delay} секунд")
         await asyncio.sleep(delay)
 
     async def send_comment(self, client, account_phone: str, channel, comment: str, message_id: int, attempts: int = 0) -> None:
@@ -137,16 +137,17 @@ class ChatManager:
         try:
             for group in groups:
                 client.add_event_handler(
-                    lambda event: self.handle_new_message(event, account_phone),
+                    lambda event: self.handle_new_message(event, group, account_phone),
                     events.NewMessage(chats=group)
                 )
         except Exception as e:
             console.log("Ошибка при запуске мониторинга групп", style="red")
-            logger.error(f"Ошибка при запуске мониторинга групп: {e}")
+            logger.error(f"Error running group monitoring: {e}")
 
     async def handle_new_message(
             self,
             event: events.NewMessage.Event,
+            group_link: str,
             account_phone: str
     ) -> None:
         """
@@ -157,21 +158,20 @@ class ChatManager:
             account_phone: User phone number (for logs).
         """
         try:
-            chat_id = event.chat_id
             chat = await event.get_chat()
             chat_title = chat.title if hasattr(chat, "title") else "Unknown Chat"
 
             message_text = event.message.message
 
             console.log(
-                f"Новое сообщение в группе {chat_title} ({chat_id}): {message_text}",
+                f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-
+            await self.sleep_before_send_message()
             if "привет" in message_text.lower():
                 await event.reply("Привет! Как дела?")
                 console.log(f"Аккаунт {account_phone} ответил на сообщение в группе {chat_title}.", style="green")
 
         except Exception as e:
             console.log("Ошибка при обработке нового сообщения", style="red")
-            logger.error(f"Ошибка при обработке нового сообщения: {e}")
+            logger.error(f"Error process new message: {e}")
