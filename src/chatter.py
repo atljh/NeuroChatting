@@ -34,12 +34,9 @@ class Chatter(BaseThon):
             f"Аккаунт {self.account_phone} начал работу",
         )
         await self._join_groups()
-        console.log(
-            f"Мониторинг групп начат для аккаунта {self.account_phone}",
-            style="green"
-        )
-        console.log(self.groups)
-        await self._start_chat_handler()
+        handler_status = await self._start_chat_handler()
+        if not handler_status:
+            return
 
     async def _join_groups(self) -> None:
         for group in self.file_manager.read_groups():
@@ -112,15 +109,22 @@ class Chatter(BaseThon):
                 logger.error(f"Unknown JoinStatus: {status}")
                 console.log(f"Неизвестный статус: {status}")
 
-    async def _start_chat_handler(self):
+    async def _start_chat_handler(self) -> bool:
+        if not len(self.groups):
+            console.log("Нет групп для обработки", style="red")
+            return
+        console.log(
+            f"Мониторинг групп начат для аккаунта {self.account_phone}",
+            style="green"
+        )
         try:
             await self.chat_manager.monitor_groups(
                 self.client, self.account_phone, self.groups
             )
             await self.client.run_until_disconnected()
         except Exception as e:
-            logger.error(f"Ошибка: {e}")
-            console.log(f'Ошибка {e}', style='yellow')
+            logger.error(f"Error on monitor groups: {e}")
+            console.log('Ошибка при обработке групп', style='yellow')
 
     async def _main(self) -> str:
         r = await self.check()
