@@ -35,7 +35,8 @@ class Chatter(BaseThon):
         )
         await self._join_groups()
         console.log(
-            f"Аккаунт {self.account_phone} начал мониторинг групп"
+            f"Мониторинг групп начат для аккаунта {self.account_phone}",
+            style="green"
         )
         console.log(self.groups)
         await self._start_chat_handler()
@@ -116,6 +117,7 @@ class Chatter(BaseThon):
             await self.chat_manager.monitor_groups(
                 self.client, self.account_phone, self.groups
             )
+            await self.client.run_until_disconnected()
         except Exception as e:
             logger.error(f"Ошибка: {e}")
             console.log(f'Ошибка {e}', style='yellow')
