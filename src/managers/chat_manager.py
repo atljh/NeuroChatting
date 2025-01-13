@@ -138,12 +138,12 @@ class ChatManager:
             groups: list
     ) -> None:
         """
-        Мониторит новые сообщения в указанных группах.
+        Handles new messages in passed groups
 
         Args:
-            client: Экземпляр TelegramClient.
-            account_phone: Номер телефона аккаунта (для логирования).
-            groups: Список групп (ссылки или username).
+            client: TelegramClient.
+            account_phone: User phone number (for logs).
+            groups: List of groups (link or username).
         """
         try:
             self.groups.update(groups)
@@ -152,11 +152,9 @@ class ChatManager:
             async def new_message_listener(event):
                 await self.handle_new_message(event, account_phone)
 
-            console.log(f"Мониторинг групп запущен для аккаунта {account_phone}.", style="green")
-
         except Exception as e:
-            console.log(f"Ошибка при запуске мониторинга групп: {e}", style="red")
-            logging.error(f"Ошибка при запуске мониторинга групп: {e}")
+            console.log("Ошибка при запуске мониторинга групп", style="red")
+            logger.error(f"Ошибка при запуске мониторинга групп: {e}")
 
     async def handle_new_message(
             self,
@@ -164,11 +162,11 @@ class ChatManager:
             account_phone: str
     ) -> None:
         """
-        Обрабатывает новое сообщение в группе.
+        Process new message in group
 
         Args:
-            event: Событие нового сообщения.
-            account_phone: Номер телефона аккаунта (для логирования).
+            event: new message event object.
+            account_phone: User phone number (for logs).
         """
         try:
             chat_id = event.chat_id
@@ -187,5 +185,5 @@ class ChatManager:
                 console.log(f"Аккаунт {account_phone} ответил на сообщение в группе {chat_title}.", style="green")
 
         except Exception as e:
-            console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
-            logging.error(f"Ошибка при обработке нового сообщения: {e}")
+            console.log("Ошибка при обработке нового сообщения", style="red")
+            logger.error(f"Ошибка при обработке нового сообщения: {e}")
