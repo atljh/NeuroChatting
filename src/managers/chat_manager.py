@@ -45,6 +45,9 @@ class ChatManager:
 
         self.config = config
         self._openai_client = None
+        self._messages_count = 0
+        self._monitoring_active = True
+        self._event_handlers = {}
         self._answer_manager = PromptManager(self.config)
         self._blacklist_manager = BlackList()
 
@@ -116,7 +119,7 @@ class ChatManager:
             groups: list
     ) -> None:
         """
-        Handles new messages in passed groups
+        Handles new messages in passed groups.
 
         Args:
             client: TelegramClient.
@@ -125,13 +128,32 @@ class ChatManager:
         """
         try:
             for group in groups:
+                handler = lambda event: self.handle_new_message(event, group, account_phone)
                 client.add_event_handler(
-                    lambda event: self.handle_new_message(event, group, account_phone),
+                    handler,
                     events.NewMessage(chats=group)
                 )
+                self._event_handlers[group] = handler
+
+            while self._monitoring_active:
+                await asyncio.sleep(1)
+
         except Exception as e:
             console.log("Ошибка при запуске мониторинга групп", style="red")
             logger.error(f"Error running group monitoring: {e}")
+        finally:
+            await self.stop_monitoring(client)
+
+    async def stop_monitoring(self, client: TelegramClient) -> None:
+        """
+        Stops monitoring and removes all event handlers.
+
+        Args:
+            client: TelegramClient instance.
+        """
+        self._monitoring_active = False
+        for group, handler in self._event_handlers.items():
+            client.remove_event_handler(handler, events.NewMessage(chats=group))
 
     async def handle_new_message(
             self,
@@ -140,12 +162,15 @@ class ChatManager:
             account_phone: str
     ) -> None:
         """
-        Process new message in group
+        Processes new message in group.
 
         Args:
-            event: new message event object.
+            event: New message event object.
+            group_link: Link to the group.
             account_phone: User phone number (for logs).
         """
+        if not self._monitoring_active:
+            return
         try:
             chat = await event.get_chat()
             chat_title = chat.title if hasattr(chat, "title") else "Unknown Chat"
@@ -153,18 +178,27 @@ class ChatManager:
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-            asnwer_text = await self._answer_manager.generate_answer(event.message.message)
+
+            answer_text = await self._answer_manager.generate_answer(event.message.message)
             await self.sleep_before_send_message()
             answer_status = await self.send_answer(
-                event, asnwer_text, account_phone, group_link
+                event, answer_text, account_phone, group_link
             )
             await self.handle_answer_status(
                 answer_status, group_link, account_phone
             )
-            console.log(answer_status)
+
+            if answer_status == SendMessageStatus.OK:
+                self._messages_count += 1
+                console.log(f"Отправлено сообщений: {self._messages_count}/{self.message_limit}", style="green")
+
+                if self._messages_count >= self.message_limit:
+                    console.log("Достигнут лимит сообщений. Останавливаем мониторинг.", style="yellow")
+                    await self.stop_monitoring(event.client)
+
         except Exception as e:
-            console.log("Ошибка при обработке нового сообщения", style="red")
-            logger.error(f"Error process new message: {e}")
+            console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
+            logger.error(f"Error handling new message: {e}")
 
     async def handle_answer_status(
             self,

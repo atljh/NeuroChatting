@@ -67,7 +67,6 @@ class PromptManager:
         prompt = self.prompts[0] if self.prompts else None
         prompt = prompt.replace("{message_text}", message_text)
         prompt = prompt.replace("{prompt_tone}", prompt_tone)
-        console.log(self.prompt_tone, prompt)
         return prompt
 
     async def generate_answer(
