@@ -48,6 +48,26 @@ class FileManager:
             sys.exit(1)
 
     @staticmethod
+    def read_keywords(
+        file: str = 'key.txt'
+    ) -> List[str] | None:
+        keywords = []
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        keywords.append(line)
+            if not len(keywords):
+                console.log("Ключевые слова не найдены", style="red")
+                sys.exit(1)
+                return
+            return keywords
+        except FileNotFoundError:
+            console.log(f"Файл {file} не найден", style="bold red")
+            sys.exit(1)
+
+    @staticmethod
     def read_blacklist(
         file: str = 'blacklist.txt'
     ) -> Dict[str, List[str]]:
