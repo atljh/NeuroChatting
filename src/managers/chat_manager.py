@@ -196,24 +196,26 @@ class ChatManager:
     ) -> None:
         try:
             keywords = FileManager.read_keywords(self.keywords_file)
-            console.log(keywords)
+            console.log(f"Загруженные ключевые слова: {keywords}")
+
+            message_text = event.message.message.lower()
+
+            if not any(keyword in message_text for keyword in keywords):
+                console.log("Сообщение не содержит ключевых слов. Пропускаем.", style="yellow")
+                return
             chat = await event.get_chat()
             chat_title = getattr(chat, "title", "Unknown Chat")
             console.log(
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-            answer_text = await self._answer_manager.generate_answer(
-                event.message.message
-            )
+            answer_text = await self._answer_manager.generate_answer(message_text)
             await self.sleep_before_send_message()
 
             answer_status = await self.send_answer(
                 event, answer_text, account_phone, group_link
             )
-            await self.handle_answer_status(
-                answer_status, group_link, account_phone
-            )
+            await self.handle_answer_status(answer_status, group_link, account_phone)
             if answer_status == SendMessageStatus.OK:
                 await self.check_for_limit(event)
 
