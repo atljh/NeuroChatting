@@ -1,6 +1,9 @@
 import sys
 import yaml
 from typing import Tuple
+from rich.text import Text
+from rich.panel import Panel
+from rich.console import Console
 from pydantic import BaseModel, Field, field_validator
 from src.logger import logger, console
 
@@ -81,3 +84,37 @@ class ConfigManager:
             console.log("Ошибка в конфиге", style="red")
             logger.error(f"Ошибка загрузки конфигурации: {e}")
             sys.exit(1)
+
+
+def print_config(config: Config, groups_count: int) -> None:
+    """
+    Prints config information
+
+    Args:
+        config: Config obj.
+    """
+    config_text = Text()
+
+    config_text.append("  Тон сообщения: ", style="cyan")
+    config_text.append(f"{config.prompt_tone}\n", style="green")
+    config_text.append("  Режим реакции: ", style="cyan")
+
+    if config.reaction_mode == "interval":
+        reaction_mode = "Интервал"
+    elif config.reaction_mode == "keywords":
+        reaction_mode = "Ключевые слова"
+    config_text.append(f"{reaction_mode}\n", style="green")
+    config_text.append("  Групп для обработки: ", style="cyan")
+    config_text.append(f"{groups_count}\n", style="green")
+    config_text.append("  Лимит сообщений на аккаунт: ", style="cyan")
+    config_text.append(f"{config.message_limit}\n", style="green")
+    config_text.append("  Задержка перед подпиской: ", style="cyan")
+    config_text.append(f"{config.join_delay[0]} - {config.join_delay[1]} сек\n", style="green")
+    config_text.append("  Задержка перед отправкой: ", style="cyan")
+    config_text.append(f"{config.send_message_delay[0]} - {config.send_message_delay[1]} сек\n", style="green")
+    config_text.append("  Интервал сообщений: ", style="cyan")
+    config_text.append(f"{config.reaction_interval}\n", style="green")
+    config_text.append("  Файл с ключевыми словами: ", style="cyan")
+    config_text.append(f"{config.keywords_file}\n", style="green")
+
+    console.print(Panel(config_text, title="[bold magenta]Конфигурация[/]", border_style="cyan"))
