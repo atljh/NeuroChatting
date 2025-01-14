@@ -14,7 +14,7 @@ from telethon.errors import (
 )
 
 from src.logger import console, logger
-from src.managers import BlackList
+from src.managers import BlackList, FileManager
 from src.managers.prompt_manager import PromptManager
 
 
@@ -45,6 +45,8 @@ class ChatManager:
         """
 
         self.config = config
+        self.reaction_mode = config.reaction_mode
+        self.keywords_file = config.keywords_file
         self._openai_client = None
         self._messages_count = 0
         self._monitoring_active = True
@@ -164,10 +166,10 @@ class ChatManager:
             await client.disconnect()
 
     async def handle_new_message(
-            self,
-            event: events.NewMessage.Event,
-            group_link: str,
-            account_phone: str
+        self,
+        event: events.NewMessage.Event,
+        group_link: str,
+        account_phone: str
     ) -> None:
         """
         Handles a new message in a group.
@@ -179,38 +181,41 @@ class ChatManager:
         """
         if not self._monitoring_active:
             return
+        if self.reaction_mode == 'keywords':
+            await self.handle_message_with_keywords(
+                event, group_link, account_phone
+            )
+        elif self.reaction_mode == 'interval':
+            ...
 
+    async def handle_message_with_keywords(
+        self,
+        event: events.NewMessage.Event,
+        group_link: str,
+        account_phone: str
+    ) -> None:
         try:
+            keywords = FileManager.read_keywords(self.keywords_file)
+            console.log(keywords)
             chat = await event.get_chat()
             chat_title = getattr(chat, "title", "Unknown Chat")
-
             console.log(
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-
-            answer_text = await self._answer_manager.generate_answer(event.message.message)
-
+            answer_text = await self._answer_manager.generate_answer(
+                event.message.message
+            )
             await self.sleep_before_send_message()
 
             answer_status = await self.send_answer(
                 event, answer_text, account_phone, group_link
             )
-            await self.handle_answer_status(answer_status, group_link, account_phone)
-
+            await self.handle_answer_status(
+                answer_status, group_link, account_phone
+            )
             if answer_status == SendMessageStatus.OK:
-                self._messages_count += 1
-                console.log(
-                    f"Отправлено сообщений: {self._messages_count}/{self.message_limit}",
-                    style="green"
-                )
-
-                if self._messages_count >= self.message_limit:
-                    console.log(
-                        "Достигнут лимит сообщений. Останавливаем мониторинг.",
-                        style="yellow"
-                    )
-                    await self.stop_monitoring(event.client)
+                await self.check_for_limit(event)
 
         except Exception as e:
             console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
@@ -278,3 +283,19 @@ class ChatManager:
                 )
 
         return status
+
+    async def check_for_limit(
+        self,
+        event: events.NewMessage.Event
+    ) -> None:
+        self._messages_count += 1
+        console.log(
+            f"Отправлено сообщений: {self._messages_count}/{self.message_limit}",
+            style="green"
+        )
+        if self._messages_count >= self.message_limit:
+            console.log(
+                "Достигнут лимит сообщений. Останавливаем мониторинг.",
+                style="yellow"
+            )
+            await self.stop_monitoring(event.client)

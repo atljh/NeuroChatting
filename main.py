@@ -26,4 +26,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # register_user()
     main()
