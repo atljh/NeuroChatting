@@ -30,7 +30,7 @@ class FileManager:
     @staticmethod
     def read_prompts(
         file: str = 'prompts.txt'
-    ) -> List[str]:
+    ) -> List[str] | None:
         prompts = []
         try:
             with open(file, 'r', encoding='utf-8') as f:
@@ -41,6 +41,7 @@ class FileManager:
             if not len(prompts):
                 console.log("Промпт не найден", style="red")
                 sys.exit(1)
+                return
             return prompts
         except FileNotFoundError:
             console.log("Файл prompts.txt не найден", style="bold red")
