@@ -4,7 +4,7 @@ from openai import OpenAI
 
 from config import Config
 from src.logger import logger, console
-from src.managers import FileManager
+from src.managers.file_manager import FileManager
 
 
 class PromptManager:
@@ -34,16 +34,12 @@ class PromptManager:
             config (Config): The configuration object containing settings such as the OpenAI API key.
         """
         self.config = config
-        self.prompt_tone = None
+        self.prompt_tone = self.config.prompt_tone
         self.prompts = self.load_prompts()
         self.openai_client = OpenAI(api_key=self.config.openai_api_key)
 
     def load_prompts(self) -> List[str]:
         return FileManager.read_prompts()
-
-    @property
-    def prompt_tone(self) -> str:
-        return self.config.prompt_tone
 
     async def generate_prompt(
             self,

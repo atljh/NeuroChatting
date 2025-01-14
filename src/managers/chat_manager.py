@@ -13,7 +13,8 @@ from telethon.errors import (
 )
 
 from src.logger import console, logger
-from src.managers import PromptManager, BlackList
+from src.managers import BlackList
+from src.managers.prompt_manager import PromptManager
 
 
 class SendMessageStatus(Enum):
@@ -44,7 +45,7 @@ class ChatManager:
 
         self.config = config
         self._openai_client = None
-        self._answer_manager = None
+        self._answer_manager = PromptManager(self.config)
         self._blacklist_manager = BlackList()
 
     @property
@@ -54,12 +55,6 @@ class ChatManager:
     @property
     def send_message_delay(self) -> tuple[int, int]:
         return self.config.send_message_delay
-
-    @property
-    def answer_manager(self) -> PromptManager:
-        if self._answer_manager is None:
-            self._answer_manager = PromptManager(self.config)
-        return self._answer_manager
 
     async def sleep_before_send_message(self) -> None:
         """Random delay before sending a message."""
@@ -158,7 +153,7 @@ class ChatManager:
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-            asnwer_text = self._answer_manager.generate_answer(event.message.message)
+            asnwer_text = await self._answer_manager.generate_answer(event.message.message)
             await self.sleep_before_send_message()
             answer_status = await self.send_answer(
                 event, asnwer_text, account_phone, group_link

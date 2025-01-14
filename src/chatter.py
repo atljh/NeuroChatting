@@ -4,9 +4,10 @@ from pathlib import Path
 from config import Config
 from src.thon import BaseThon
 from src.managers import (
-    ChatManager, ChatJoiner, FileManager,
+    ChatJoiner, FileManager,
     JoinStatus, BlackList
 )
+from src.managers.chat_manager import ChatManager
 from src.logger import logger, console
 
 
