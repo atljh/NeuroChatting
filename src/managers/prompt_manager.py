@@ -105,7 +105,7 @@ class PromptManager:
         if not prompt:
             return None
         try:
-            response = self.client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model=self.config.chat_gpt_model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant and interesting chatter."},
