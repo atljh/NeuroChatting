@@ -4,7 +4,7 @@ from openai import OpenAI
 
 from config import Config
 from src.logger import logger, console
-from src.managers.file_manager import FileManager
+from src.managers import FileManager
 
 
 class PromptManager:
@@ -34,46 +34,49 @@ class PromptManager:
             config (Config): The configuration object containing settings such as the OpenAI API key.
         """
         self.config = config
+        self.prompt_tone = None
         self.prompts = self.load_prompts()
         self.openai_client = OpenAI(api_key=self.config.openai_api_key)
 
     def load_prompts(self) -> List[str]:
         return FileManager.read_prompts()
 
+    @property
+    def prompt_tone(self) -> str:
+        return self.config.prompt_tone
+
     async def generate_prompt(
             self,
-            post_text: str,
-            prompt_tone: str
+            message_text: str,
     ) -> str:
         """
         Generates a prompt by inserting the provided post text and tone into a predefined template.
 
-        This method takes the input `post_text` and `prompt_tone`, and substitutes them into the first available
+        This method takes the input `message_text` and `prompt_tone`, and substitutes them into the first available
         prompt template from the `self.prompts` list. If no prompts are available, it returns `None`.
 
         Args:
-            post_text (str): The text of the post to be included in the prompt.
-            prompt_tone (str): The desired tone (e.g., friendly, formal) to be included in the prompt.
-
+            message_text (str): The text of the new message to be included in the prompt.
         Returns:
-            str: The generated prompt with `{post_text}` and `{prompt_tone}` placeholders replaced by the provided values.
+            str: The generated prompt with `{message_text}` and `{prompt_tone}` placeholders replaced by the provided values.
                 Returns `None` if no prompt templates are available in `self.prompts`.
 
         Example:
-            >>> self.prompts = ["Write a {prompt_tone} response to: {post_text}"]
+            >>> self.prompts = ["Write a {prompt_tone} response to: {message_text}"]
             >>> prompt = await generate_prompt("Hello, how are you?", "friendly")
             >>> print(prompt)
             "Write a friendly response to: Hello, how are you?"
         """
+        prompt_tone = self.prompt_tone
         prompt = self.prompts[0] if self.prompts else None
-        prompt = prompt.replace("{post_text}", post_text)
+        prompt = prompt.replace("{message_text}", message_text)
         prompt = prompt.replace("{prompt_tone}", prompt_tone)
+        console.log(self.prompt_tone, prompt)
         return prompt
 
     async def generate_answer(
             self,
-            post_text: str,
-            prompt_tone: str,
+            message_text: str,
     ) -> str | None:
         """
         Generates a response to a given post using the OpenAI ChatGPT model.
@@ -84,7 +87,6 @@ class PromptManager:
 
         Args:
             post_text (str): The text of the post to which a response is being generated.
-            prompt_tone (str): The tone of the prompt (e.g., friendly, formal, etc.).
 
         Returns:
             str | None: The generated response as a string. Returns `None` if the prompt generation fails,
@@ -102,7 +104,7 @@ class PromptManager:
             "Hi! I'm doing great, thanks for asking. How about you?"
         """
         prompt = await self.generate_prompt(
-            post_text, prompt_tone
+            message_text
         )
         if not prompt:
             return None

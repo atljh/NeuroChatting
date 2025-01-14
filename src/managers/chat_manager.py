@@ -13,7 +13,7 @@ from telethon.errors import (
 )
 
 from src.logger import console, logger
-from src.managers.prompt_manager import PromptManager
+from src.managers import PromptManager, BlackList
 
 
 class SendMessageStatus(Enum):
@@ -44,12 +44,8 @@ class ChatManager:
 
         self.config = config
         self._openai_client = None
-        self._comment_manager = None
-        self.event_handlers = {}
-
-    @property
-    def prompt_tone(self) -> str:
-        return self.config.prompt_tone
+        self._answer_manager = None
+        self._blacklist_manager = BlackList()
 
     @property
     def message_limit(self) -> int:
@@ -75,11 +71,12 @@ class ChatManager:
     async def send_answer(
             self,
             event: events.NewMessage.Event,
+            answer_text: str,
             account_phone: str,
             group_link: str
     ) -> SendMessageStatus:
         try:
-            await event.reply("Привет! Как дела?")
+            await event.reply(answer_text)
         except FloodWaitError:
             return SendMessageStatus.FLOOD
         except PeerFloodError:
@@ -157,16 +154,14 @@ class ChatManager:
         try:
             chat = await event.get_chat()
             chat_title = chat.title if hasattr(chat, "title") else "Unknown Chat"
-
-            message_text = event.message.message
-
             console.log(
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
+            asnwer_text = self._answer_manager.generate_answer(event.message.message)
             await self.sleep_before_send_message()
             answer_status = await self.send_answer(
-                event, account_phone, group_link
+                event, asnwer_text, account_phone, group_link
             )
             await self.handle_answer_status(
                 answer_status, group_link, account_phone
@@ -217,7 +212,9 @@ class ChatManager:
                     f"Аккаунт {account_phone} забанен в группе {group_link}. Добавляем группу в чёрный список.",
                     style="red"
                 )
-                # Add to blacklist here
+                self._blacklist_manager.add_to_blacklist(
+                    account_phone, group_link
+                )
             case SendMessageStatus.USER_BANNED:
                 console.log(
                     f"Пользователь в группе {group_link} забанен. Сообщение не отправлено (аккаунт {account_phone}).",
