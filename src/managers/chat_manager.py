@@ -165,74 +165,74 @@ class ChatManager:
                 style="blue"
             )
             await self.sleep_before_send_message()
-            status = await self.send_answer(
+            answer_status = await self.send_answer(
                 event, account_phone, group_link
             )
-            await self.handle_new_message(
-                status, group_link, account_phone
+            await self.handle_answer_status(
+                answer_status, group_link, account_phone
             )
+            console.log(answer_status)
         except Exception as e:
             console.log("Ошибка при обработке нового сообщения", style="red")
             logger.error(f"Error process new message: {e}")
 
+    async def handle_answer_status(
+            self,
+            status: SendMessageStatus,
+            group_link: str,
+            account_phone: str
+    ) -> SendMessageStatus:
+        """
+        Handles the status of a sent message and performs corresponding actions.
 
-async def handle_answer_status(
-        self,
-        status: SendMessageStatus,
-        group_link: str,
-        account_phone: str
-) -> SendMessageStatus:
-    """
-    Handles the status of a sent message and performs corresponding actions.
+        This method processes the status of a message sent to a group and performs specific actions
+        based on the status, such as logging success, handling errors, or adding the group to a blacklist.
 
-    This method processes the status of a message sent to a group and performs specific actions
-    based on the status, such as logging success, handling errors, or adding the group to a blacklist.
+        Args:
+            status (SendMessageStatus): The status of the sent message (e.g., OK, SKIP, FLOOD, BANNED).
+            group_link (str): The link to the group where the message was sent.
+            account_phone (str): The phone number of the account used to send the message.
 
-    Args:
-        status (SendMessageStatus): The status of the sent message (e.g., OK, SKIP, FLOOD, BANNED).
-        group_link (str): The link to the group where the message was sent.
-        account_phone (str): The phone number of the account used to send the message.
+        Returns:
+            SendMessageStatus: The same status that was passed to the method.
+        """
+        match status:
+            case SendMessageStatus.OK:
+                console.log(
+                    f"Сообщение успешно отправлено в группу {group_link} от аккаунта {account_phone}.",
+                    style="green"
+                )
+            case SendMessageStatus.SKIP:
+                console.log(
+                    f"Сообщение пропущено для группы {group_link} (аккаунт {account_phone}).",
+                    style="yellow"
+                )
+            case SendMessageStatus.FLOOD:
+                console.log(
+                    f"Аккаунт {account_phone} достиг лимита запросов для группы {group_link}. Необходимо подождать.",
+                    style="yellow"
+                )
+            case SendMessageStatus.BANNED:
+                console.log(
+                    f"Аккаунт {account_phone} забанен в группе {group_link}. Добавляем группу в чёрный список.",
+                    style="red"
+                )
+                # Add to blacklist here
+            case SendMessageStatus.USER_BANNED:
+                console.log(
+                    f"Пользователь в группе {group_link} забанен. Сообщение не отправлено (аккаунт {account_phone}).",
+                    style="red"
+                )
+            case SendMessageStatus.ERROR:
+                console.log(
+                    f"Ошибка при отправке сообщения в группу {group_link} от аккаунта {account_phone}.",
+                    style="red"
+                )
+                logger.error(f"Ошибка при отправке сообщения в группу {group_link} от аккаунта {account_phone}.")
+            case _:
+                console.log(
+                    f"Неизвестный статус отправки сообщения: {status} (группа {group_link}, аккаунт {account_phone}).",
+                    style="red"
+                )
 
-    Returns:
-        SendMessageStatus: The same status that was passed to the method.
-    """
-    match status:
-        case SendMessageStatus.OK:
-            console.log(
-                f"Сообщение успешно отправлено в группу {group_link} от аккаунта {account_phone}.",
-                style="green"
-            )
-        case SendMessageStatus.SKIP:
-            console.log(
-                f"Сообщение пропущено для группы {group_link} (аккаунт {account_phone}).",
-                style="yellow"
-            )
-        case SendMessageStatus.FLOOD:
-            console.log(
-                f"Аккаунт {account_phone} достиг лимита запросов для группы {group_link}. Необходимо подождать.",
-                style="yellow"
-            )
-        case SendMessageStatus.BANNED:
-            console.log(
-                f"Аккаунт {account_phone} забанен в группе {group_link}. Добавляем группу в чёрный список.",
-                style="red"
-            )
-            # Add to blacklist here
-        case SendMessageStatus.USER_BANNED:
-            console.log(
-                f"Пользователь в группе {group_link} забанен. Сообщение не отправлено (аккаунт {account_phone}).",
-                style="red"
-            )
-        case SendMessageStatus.ERROR:
-            console.log(
-                f"Ошибка при отправке сообщения в группу {group_link} от аккаунта {account_phone}.",
-                style="red"
-            )
-            logger.error(f"Ошибка при отправке сообщения в группу {group_link} от аккаунта {account_phone}.")
-        case _:
-            console.log(
-                f"Неизвестный статус отправки сообщения: {status} (группа {group_link}, аккаунт {account_phone}).",
-                style="red"
-            )
-
-    return status
+        return status

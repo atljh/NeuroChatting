@@ -17,19 +17,19 @@ class BlackList:
     @staticmethod
     def add_to_blacklist(
         account_phone: str,
-        group: str
+        group_link: str
     ) -> bool:
         return FileManager.add_to_blacklist(
             account_phone,
-            group
+            group_link
         )
 
     @staticmethod
     def is_group_blacklisted(
         account_phone: str,
-        group: str
+        group_link: str
     ) -> bool:
         blacklist = FileManager.read_blacklist()
-        return group in blacklist.get(
+        return group_link in blacklist.get(
             account_phone, []
         )
