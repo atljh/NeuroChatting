@@ -173,36 +173,27 @@ class ChatManager:
         account_phone: str
     ) -> None:
         """
-        Handles a new message in a group.
+        Handles a new message in a group based on the reaction mode.
 
         Args:
             event: The event containing the new message.
             group_link: The link to the group.
             account_phone: The phone number of the account.
         """
-        if not self._monitoring_active:
-            return
-        if self.reaction_mode == 'keywords':
-            await self.handle_message_with_keywords(
-                event, group_link, account_phone
-            )
-        elif self.reaction_mode == 'interval':
-            await self.handle_message_with_interval(
-                event, group_link, account_phone
-            )
-
-    async def handle_message_with_keywords(
-        self,
-        event: events.NewMessage.Event,
-        group_link: str,
-        account_phone: str
-    ) -> None:
         try:
-            keywords = FileManager.read_keywords(self.keywords_file)
+            if not self._monitoring_active:
+                return
+
             message_text = event.message.message.lower()
 
-            if not any(keyword in message_text for keyword in keywords):
-                console.log("Сообщение не содержит ключевых слов. Пропускаем.", style="yellow")
+            if self.reaction_mode == 'keywords':
+                should_react = await self.handle_message_with_keywords(message_text)
+            elif self.reaction_mode == 'interval':
+                should_react = await self.handle_message_with_interval()
+            else:
+                should_react = True
+
+            if not should_react:
                 return
             chat = await event.get_chat()
             chat_title = getattr(chat, "title", "Unknown Chat")
@@ -217,53 +208,54 @@ class ChatManager:
                 event, answer_text, account_phone, group_link
             )
             await self.handle_answer_status(answer_status, group_link, account_phone)
+
             if answer_status == SendMessageStatus.OK:
                 await self.check_for_limit(event)
 
         except Exception as e:
             console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
             logger.error(f"Error handling new message: {e}")
+
+    async def handle_message_with_keywords(
+            self,
+            message_text: str,
+    ) -> bool:
+        """
+        Checks if the message contains any of the predefined keywords.
+
+        Args:
+            message_text: The text of the message.
+
+        Returns:
+            bool: True if the message contains keywords, otherwise False.
+        """
+        keywords = FileManager.read_keywords(self.keywords_file)
+        if not any(keyword in message_text for keyword in keywords):
+            console.log("Сообщение не содержит ключевых слов. Пропускаем.", style="yellow")
+            return False
+        return True
 
     async def handle_message_with_interval(
             self,
-            event: events.NewMessage.Event,
-            group_link: str,
-            account_phone: str
-    ) -> None:
-        try:
-            if not hasattr(self, "_message_counter"):
-                self._message_counter = 0
+    ) -> bool:
+        """
+        Checks if the bot should react to the message based on the interval.
 
-            self._message_counter += 1
-            if self._message_counter < self.reaction_interval:
-                console.log(
-                    f"Сообщение #{self._message_counter} проигнорировано (интервал: {self.reaction_interval}).",
-                    style="yellow"
-                )
-                return
-
+        Returns:
+            bool: True if the bot should react, otherwise False.
+        """
+        if not hasattr(self, "_message_counter"):
             self._message_counter = 0
-            message_text = event.message.message.lower()
-            chat = await event.get_chat()
-            chat_title = getattr(chat, "title", "Unknown Chat")
+
+        self._message_counter += 1
+        if self._message_counter < self.reaction_interval:
             console.log(
-                f"Новое сообщение в группе {chat_title} ({group_link})",
-                style="blue"
+                f"Сообщение #{self._message_counter} проигнорировано (интервал: {self.reaction_interval}).",
+                style="yellow"
             )
-            answer_text = await self._answer_manager.generate_answer(message_text)
-            await self.sleep_before_send_message()
-
-            answer_status = await self.send_answer(
-                event, answer_text, account_phone, group_link
-            )
-            await self.handle_answer_status(answer_status, group_link, account_phone)
-
-            if answer_status == SendMessageStatus.OK:
-                await self.check_for_limit(event)
-
-        except Exception as e:
-            console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
-            logger.error(f"Error handling new message: {e}")
+            return False
+        self._message_counter = 0
+        return True
 
     async def handle_answer_status(
             self,
