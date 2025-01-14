@@ -38,6 +38,9 @@ class FileManager:
                     line = line.strip()
                     if line and not line.startswith("#"):
                         prompts.append(line)
+            if not len(prompts):
+                console.log("Промпт не найден", style="red")
+                sys.exit(1)
             return prompts
         except FileNotFoundError:
             console.log("Файл prompts.txt не найден", style="bold red")
