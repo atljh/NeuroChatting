@@ -144,6 +144,7 @@ class ChatManager:
             logger.error(f"Error running group monitoring: {e}")
         finally:
             await self.stop_monitoring(client)
+            return True
 
     async def stop_monitoring(self, client: TelegramClient) -> None:
         """
@@ -153,10 +154,12 @@ class ChatManager:
             client: The Telegram client instance.
         """
         self._monitoring_active = False
+
         for group, handler in self._event_handlers.items():
             client.remove_event_handler(handler, events.NewMessage(chats=group))
-        await client.disconnect()
-        console.log("Мониторинг остановлен, клиент отключён.", style="yellow")
+
+        if client.is_connected():
+            await client.disconnect()
 
     async def handle_new_message(
             self,

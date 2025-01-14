@@ -118,10 +118,10 @@ class Chatter(BaseThon):
             style="green"
         )
         try:
-            await self.chat_manager.monitor_groups(
+            status = await self.chat_manager.monitor_groups(
                 self.client, self.account_phone, self.groups
             )
-            await self.client.run_until_disconnected()
+            console.log('s', status)
         except Exception as e:
             logger.error(f"Error on monitor groups: {e}")
             console.log('Ошибка при обработке групп', style='yellow')
