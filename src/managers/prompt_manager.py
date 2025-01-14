@@ -120,12 +120,12 @@ class PromptManager:
             answer = response.choices[0].message.content
             return answer
         except openai.AuthenticationError:
-            console.log("Authentication error: invalid API key", style="red")
+            console.log("Ошибка авторизации: неверный API ключ", style="red")
         except openai.RateLimitError:
-            console.log("Insufficient balance or rate limit exceeded", style="red")
+            console.log("Не хватает денег на балансе ChatGPT", style="red")
         except openai.PermissionDeniedError:
-            console.log("ChatGPT is not available in your region. Please use a VPN.", style="red")
+            console.log("В вашей стране не работает ChatGPT, включите VPN", style="red")
         except Exception as e:
-            logger.error(f"Error while generating message with prompt: {e}")
-            console.log("Error generating comment", style="red")
+            logger.error(f"Error while generatin message with prompt: {e}")
+            console.log("Ошибка генерации комментария", style="red")
             return None

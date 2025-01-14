@@ -18,8 +18,10 @@ from src.managers.prompt_manager import PromptManager
 
 class SendMessageStatus(Enum):
     OK = "OK"
-    BANNED = "BANNED"
+    SKIP = "SKIP"
     FLOOD = "FLOOD"
+    BANNED = "BANNED"
+    USER_BANNED = "USER_BANNED"
     ERROR = "ERROR"
 
 
@@ -58,10 +60,10 @@ class ChatManager:
         return self.config.send_message_delay
 
     @property
-    def comment_manager(self) -> PromptManager:
-        if self._comment_manager is None:
-            self._comment_manager = PromptManager(self.config, self.openai_client)
-        return self._comment_manager
+    def answer_manager(self) -> PromptManager:
+        if self._answer_manager is None:
+            self._answer_manager = PromptManager(self.config)
+        return self._answer_manager
 
     async def sleep_before_send_message(self) -> None:
         """Random delay before sending a message."""
@@ -70,76 +72,47 @@ class ChatManager:
         console.log(f"Задержка перед отправкой сообщения: {delay} секунд")
         await asyncio.sleep(delay)
 
-    async def send_answer(self, client, account_phone, group):
+    async def send_answer(
+            self,
+            event: events.NewMessage.Event,
+            account_phone: str,
+            group: str
+    ) -> SendMessageStatus:
         try:
-            group_entity = await self.get_channel_entity(client, group)
-            if not group_entity:
-                console.log(f"Группа {group} не найдена или недоступна.", style="red")
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
-            await client.send_message(
-                group, self.post_text,
-                parse_mode='HTML'
-            )
-            console.log(f"Сообщение отправлено от аккаунта {account_phone} в группу {group_entity.title}", style="green")
-        except FloodWaitError as e:
-            console.log(f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.", style="yellow")
-            return "MUTE"
+            await event.reply("Привет! Как дела?")
+        except FloodWaitError:
+            return SendMessageStatus.FLOOD
         except PeerFloodError:
-            console.log(f"Аккаунт {account_phone} временно заблокирован за спам. Перемещаем аккаунт в папку мут.", style="yellow")
-            return "MUTE"
+            return SendMessageStatus.FLOOD
         except UserBannedInChannelError:
-            console.log(f"Аккаунт {account_phone} заблокирован в группе {group_entity.title}", style="red")
-            self.file_manager.add_to_blacklist(account_phone, group)
-            return "OK"
+            return SendMessageStatus.BANNED
         except MsgIdInvalidError:
-            console.log("Канал не связан с чатом", style="red")
-            self.file_manager.add_to_blacklist(account_phone, group)
-            return "OK"
+            return SendMessageStatus.BANNED
         except UserDeactivatedBanError:
-            console.log(f"Аккаунт {account_phone} забанен", style="red")
-            return "ERROR_AUTH"
+            return SendMessageStatus.USER_BANNED
         except ChatWriteForbiddenError:
-            console.log(f"У аккаунта {account_phone} нет прав на отправку сообщений в чат.", style="yellow")
-            self.file_manager.add_to_blacklist(account_phone, group)
-            return "OK"
+            return SendMessageStatus.BANNED
         except ChatSendMediaForbiddenError:
-            console.log(f"Ошибка: запрещено отправлять фото в этом чате. Повторная отправка без картинки.", style="yellow")
-            return "OK"
+            return SendMessageStatus.SKIP
         except Exception as e:
             if "private and you lack permission" in str(e):
-                console.log(f"Группа {group_entity.title} недоступна для аккаунта {account_phone}. Пропускаем.", style="yellow")
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.BANNED
             elif "You can't write" in str(e):
-                console.log(f"Группа {group_entity.title} недоступна для аккаунта {account_phone}. Пропускаем.", style="yellow")
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.BANNED
             elif "CHAT_SEND_PHOTOS_FORBIDDEN" in str(e):
-                console.log(f"Ошибка: запрещено отправлять фото в этом чате. Повторная отправка без картинки.", style="yellow")
-                return "OK"
+                return SendMessageStatus.SKIP
             elif "A wait of" in str(e):
-                console.log(f"Слишком много запросов от аккаунта {account_phone}. Ожидание {e.seconds} секунд.", style="yellow")
-                return "MUTE"
+                return SendMessageStatus.FLOOD
             elif "TOPIC_CLOSED" in str(e):
-                console.log("Чат с топиками. Пропускаем", style="yellow")
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.SKIP
             elif "invalid permissions" in str(e):
-                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.BANNED
             elif "The chat is restricted" in str(e):
-                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.BANNED
             elif "CHAT_SEND_PLAIN_FORBIDDEN" in str(e):
-                console.log("Отправка сообщений запрещена. Добавляем в черный список", style='yellow')
-                self.file_manager.add_to_blacklist(account_phone, group)
-                return "OK"
+                return SendMessageStatus.BANNED
             else:
-                console.log(f"Ошибка при отправке сообщения в группе {group_entity.title}, {account_phone}: {e}", style="red")
-            self.file_manager.add_to_blacklist(account_phone, group)
+                console.log(f"Ошибка при отправке сообщения в группу {group}, {account_phone}: {e}", style="red")
             return "SKIP"
         return "OK"
 
@@ -191,9 +164,8 @@ class ChatManager:
                 style="blue"
             )
             await self.sleep_before_send_message()
-            if "привет" in message_text.lower():
-                await event.reply("Привет! Как дела?")
-                console.log(f"Аккаунт {account_phone} ответил на сообщение в группе {chat_title}.", style="green")
+            result = await self.send_answer(event, account_phone, group_link)
+            console.log(f"Аккаунт {account_phone} ответил на сообщение в группе {chat_title}.", style="green")
 
         except Exception as e:
             console.log("Ошибка при обработке нового сообщения", style="red")
