@@ -47,6 +47,7 @@ class ChatManager:
         self.config = config
         self.reaction_mode = config.reaction_mode
         self.keywords_file = config.keywords_file
+        self.reaction_interval = config.reaction_interval
         self._openai_client = None
         self._messages_count = 0
         self._monitoring_active = True
@@ -186,7 +187,9 @@ class ChatManager:
                 event, group_link, account_phone
             )
         elif self.reaction_mode == 'interval':
-            ...
+            await self.handle_message_with_interval(
+                event, group_link, account_phone
+            )
 
     async def handle_message_with_keywords(
         self,
@@ -196,8 +199,6 @@ class ChatManager:
     ) -> None:
         try:
             keywords = FileManager.read_keywords(self.keywords_file)
-            console.log(f"Загруженные ключевые слова: {keywords}")
-
             message_text = event.message.message.lower()
 
             if not any(keyword in message_text for keyword in keywords):
@@ -216,6 +217,47 @@ class ChatManager:
                 event, answer_text, account_phone, group_link
             )
             await self.handle_answer_status(answer_status, group_link, account_phone)
+            if answer_status == SendMessageStatus.OK:
+                await self.check_for_limit(event)
+
+        except Exception as e:
+            console.log(f"Ошибка при обработке нового сообщения: {e}", style="red")
+            logger.error(f"Error handling new message: {e}")
+
+    async def handle_message_with_interval(
+            self,
+            event: events.NewMessage.Event,
+            group_link: str,
+            account_phone: str
+    ) -> None:
+        try:
+            if not hasattr(self, "_message_counter"):
+                self._message_counter = 0
+
+            self._message_counter += 1
+            if self._message_counter < self.reaction_interval:
+                console.log(
+                    f"Сообщение #{self._message_counter} проигнорировано (интервал: {self.reaction_interval}).",
+                    style="yellow"
+                )
+                return
+
+            self._message_counter = 0
+            message_text = event.message.message.lower()
+            chat = await event.get_chat()
+            chat_title = getattr(chat, "title", "Unknown Chat")
+            console.log(
+                f"Новое сообщение в группе {chat_title} ({group_link})",
+                style="blue"
+            )
+            answer_text = await self._answer_manager.generate_answer(message_text)
+            await self.sleep_before_send_message()
+
+            answer_status = await self.send_answer(
+                event, answer_text, account_phone, group_link
+            )
+            await self.handle_answer_status(answer_status, group_link, account_phone)
+
             if answer_status == SendMessageStatus.OK:
                 await self.check_for_limit(event)
 
