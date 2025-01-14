@@ -7,18 +7,22 @@ from src.logger import console
 
 class FileManager:
     """Class for file managment"""
-
     @staticmethod
     def read_groups(
         file: str = 'groups.txt'
-    ) -> List[str]:
+    ) -> List[str] | None:
         try:
             with open(file, 'r', encoding='utf-8') as f:
-                return [
+                groups = [
                     line.strip().replace(" ", "").replace("https://", "")
                     for line in f.readlines()
                     if len(line.strip()) > 5
                 ]
+                if not groups:
+                    console.log("Нет групп для обработки", style="red")
+                    sys.exit(1)
+                    return
+                return groups
         except FileNotFoundError:
             console.log("Файл groups.txt не найден", style="bold red")
             sys.exit(1)
@@ -96,3 +100,7 @@ class FileManager:
                 style="red"
             )
             return False
+
+
+FileManager.read_prompts()
+groups = FileManager.read_groups()
