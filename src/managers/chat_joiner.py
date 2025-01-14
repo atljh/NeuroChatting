@@ -126,6 +126,8 @@ class ChatJoiner:
         account_phone: str,
         channel: str
     ) -> JoinStatus:
+        if "+" in channel:
+            channel = channel.split('+')[1]
         if "joinchat" in channel:
             channel = channel.split("/")[2]
         try:
@@ -200,6 +202,8 @@ class ChatJoiner:
             account_phone: str,
             group: str
     ) -> JoinStatus:
+        if "+" in group:
+            group = group.split('+')[1]
         try:
             await self._random_delay()
             await client(ImportChatInviteRequest(group))
@@ -368,6 +372,4 @@ class ChatJoiner:
         if chat_link.startswith("https://t.me/"):
             chat_link = chat_link[13:]
         chat_link = chat_link.split("?")[0]
-        # if "+" in chat_link:
-        #     chat_link = chat_link.split('+')[1]
         return chat_link
