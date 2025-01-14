@@ -1,8 +1,7 @@
 import random
 import asyncio
-import logging
+from enum import Enum
 
-from openai import OpenAI
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError
 from telethon.errors import (
@@ -13,9 +12,15 @@ from telethon.errors import (
     UserDeactivatedBanError, MsgIdInvalidError
 )
 
-
 from src.logger import console, logger
 from src.managers.prompt_manager import PromptManager
+
+
+class SendMessageStatus(Enum):
+    OK = "OK"
+    BANNED = "BANNED"
+    FLOOD = "FLOOD"
+    ERROR = "ERROR"
 
 
 class ChatManager:
@@ -51,12 +56,6 @@ class ChatManager:
     @property
     def send_message_delay(self) -> tuple[int, int]:
         return self.config.send_message_delay
-
-    @property
-    def openai_client(self) -> OpenAI:
-        if self._openai_client is None:
-            self._openai_client = OpenAI(api_key=self.config.openai_api_key)
-        return self._openai_client
 
     @property
     def comment_manager(self) -> PromptManager:
