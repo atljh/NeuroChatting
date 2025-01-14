@@ -55,9 +55,10 @@ class Starter(BaseSession):
             yield item, json_file, json_data
 
     async def main(self) -> bool:
-        sessions = list(self.__get_sessions_and_users())
-        if not sessions:
-            console.log("Нет активных сессий. Прекращение работы.", style="yellow")
-            return False
-        for item, json_file, json_data in sessions:
-            await self._main(item, json_file, json_data, self.config)
+        while True:
+            sessions = list(self.__get_sessions_and_users())
+            if not sessions:
+                console.log("Нет активных сессий. Прекращение работы.", style="yellow")
+                return False
+            for item, json_file, json_data in sessions:
+                await self._main(item, json_file, json_data, self.config)

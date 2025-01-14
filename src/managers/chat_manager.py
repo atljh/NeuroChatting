@@ -129,7 +129,9 @@ class ChatManager:
         """
         try:
             for group in groups:
-                handler = lambda event: self.handle_new_message(event, group, account_phone)
+                handler = lambda event: self.handle_new_message(
+                    event, group, account_phone
+                )
                 client.add_event_handler(
                     handler,
                     events.NewMessage(chats=group)
@@ -180,27 +182,34 @@ class ChatManager:
 
         try:
             chat = await event.get_chat()
-            chat_title = chat.title if hasattr(chat, "title") else "Unknown Chat"
+            chat_title = getattr(chat, "title", "Unknown Chat")
+
             console.log(
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
 
             answer_text = await self._answer_manager.generate_answer(event.message.message)
+
             await self.sleep_before_send_message()
+
             answer_status = await self.send_answer(
                 event, answer_text, account_phone, group_link
             )
-            await self.handle_answer_status(
-                answer_status, group_link, account_phone
-            )
+            await self.handle_answer_status(answer_status, group_link, account_phone)
 
             if answer_status == SendMessageStatus.OK:
                 self._messages_count += 1
-                console.log(f"Отправлено сообщений: {self._messages_count}/{self.message_limit}", style="green")
+                console.log(
+                    f"Отправлено сообщений: {self._messages_count}/{self.message_limit}",
+                    style="green"
+                )
 
                 if self._messages_count >= self.message_limit:
-                    console.log("Достигнут лимит сообщений. Останавливаем мониторинг.", style="yellow")
+                    console.log(
+                        "Достигнут лимит сообщений. Останавливаем мониторинг.",
+                        style="yellow"
+                    )
                     await self.stop_monitoring(event.client)
 
         except Exception as e:
