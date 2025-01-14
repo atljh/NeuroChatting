@@ -1,6 +1,7 @@
 import random
 import asyncio
 from enum import Enum
+from typing import List
 
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError
@@ -67,11 +68,11 @@ class ChatManager:
         await asyncio.sleep(delay)
 
     async def send_answer(
-            self,
-            event: events.NewMessage.Event,
-            answer_text: str,
-            account_phone: str,
-            group_link: str
+        self,
+        event: events.NewMessage.Event,
+        answer_text: str,
+        account_phone: str,
+        group_link: str
     ) -> SendMessageStatus:
         try:
             await event.reply(answer_text)
@@ -116,15 +117,15 @@ class ChatManager:
             self,
             client: TelegramClient,
             account_phone: str,
-            groups: list
+            groups: List[str]
     ) -> None:
         """
-        Handles new messages in passed groups.
+        Monitors groups for new messages and handles them.
 
         Args:
-            client: TelegramClient.
-            account_phone: User phone number (for logs).
-            groups: List of groups (link or username).
+            client: The Telegram client instance.
+            account_phone: The phone number of the account.
+            groups: A list of group links or usernames to monitor.
         """
         try:
             for group in groups:
@@ -149,11 +150,13 @@ class ChatManager:
         Stops monitoring and removes all event handlers.
 
         Args:
-            client: TelegramClient instance.
+            client: The Telegram client instance.
         """
         self._monitoring_active = False
         for group, handler in self._event_handlers.items():
             client.remove_event_handler(handler, events.NewMessage(chats=group))
+        await client.disconnect()
+        console.log("Мониторинг остановлен, клиент отключён.", style="yellow")
 
     async def handle_new_message(
             self,
@@ -162,15 +165,16 @@ class ChatManager:
             account_phone: str
     ) -> None:
         """
-        Processes new message in group.
+        Handles a new message in a group.
 
         Args:
-            event: New message event object.
-            group_link: Link to the group.
-            account_phone: User phone number (for logs).
+            event: The event containing the new message.
+            group_link: The link to the group.
+            account_phone: The phone number of the account.
         """
         if not self._monitoring_active:
             return
+
         try:
             chat = await event.get_chat()
             chat_title = chat.title if hasattr(chat, "title") else "Unknown Chat"
