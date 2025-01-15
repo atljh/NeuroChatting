@@ -117,10 +117,10 @@ class ChatManager:
         return SendMessageStatus.OK
 
     async def monitor_groups(
-            self,
-            client: TelegramClient,
-            account_phone: str,
-            groups: List[str]
+        self,
+        client: TelegramClient,
+        account_phone: str,
+        groups: List[str]
     ) -> None:
         """
         Monitors groups for new messages and handles them.
@@ -132,7 +132,7 @@ class ChatManager:
         """
         try:
             for group in groups:
-                handler = lambda event: self.handle_new_message(
+                handler = lambda event, group=group: self.handle_new_message(
                     event, group, account_phone
                 )
                 client.add_event_handler(
@@ -183,7 +183,6 @@ class ChatManager:
         try:
             if not self._monitoring_active:
                 return
-
             message_text = event.message.message.lower()
 
             if self.reaction_mode == 'keywords':
