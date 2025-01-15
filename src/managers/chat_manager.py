@@ -4,15 +4,11 @@ from enum import Enum
 from typing import List
 
 from telethon import TelegramClient, events
-from telethon.errors import FloodWaitError
 from telethon.errors import (
-    FloodWaitError, UserBannedInChannelError, UserNotParticipantError, ChatWriteForbiddenError,
-    ChatAdminRequiredError, UserIsBlockedError, InputUserDeactivatedError,
-    PeerFloodError, ChannelPrivateError, UsernameNotOccupiedError,
-    InviteRequestSentError, InviteHashExpiredError, ChatSendMediaForbiddenError,
+    FloodWaitError, UserBannedInChannelError, ChatWriteForbiddenError,
+    PeerFloodError, ChatSendMediaForbiddenError,
     UserDeactivatedBanError, MsgIdInvalidError
 )
-
 from src.logger import console, logger
 from src.managers import BlackList, FileManager
 from src.managers.prompt_manager import PromptManager
