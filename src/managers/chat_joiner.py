@@ -267,6 +267,8 @@ class ChatJoiner:
                 return JoinStatus.BANNED
             elif "that you are not" in str(e):
                 return False
+            elif "A wait of" in str(e):
+                return JoinStatus.FLOOD
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
             return False
