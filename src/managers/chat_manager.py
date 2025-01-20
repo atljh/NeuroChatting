@@ -128,9 +128,8 @@ class ChatManager:
         """
         try:
             for group in groups:
-                handler = lambda event, group=group: self.handle_new_message(
-                    event, group, account_phone
-                )
+                def handler(event, group=group):
+                    return self.handle_new_message(event, group, account_phone)
                 client.add_event_handler(
                     handler,
                     events.NewMessage(chats=group)

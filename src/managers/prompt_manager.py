@@ -54,7 +54,8 @@ class PromptManager:
         Args:
             message_text (str): The text of the new message to be included in the prompt.
         Returns:
-            str: The generated prompt with `{message_text}` and `{prompt_tone}` placeholders replaced by the provided values.
+            str: The generated prompt with `{message_text}` and `{prompt_tone}`
+                                    placeholders replaced by the provided values.
                 Returns `None` if no prompt templates are available in `self.prompts`.
 
         Example:
