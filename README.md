@@ -10,8 +10,8 @@
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Telegram-blue.svg)](https://telegram.org/)
-[![GitHub Issues](https://img.shields.io/github/issues/username/NeuroChatting.svg)](https://github.com/username/NeuroChatting/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/username/NeuroChatting.svg)](https://github.com/username/NeuroChatting/pulls)
+[![GitHub Issues](https://img.shields.io/github/issues/atljh/NeuroChatting.svg)](https://github.com/atljh/NeuroChatting/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/atljh/NeuroChatting.svg)](https://github.com/atljh/NeuroChatting/pulls)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
@@ -26,28 +26,44 @@
 
 - [About](#about)
 - [Demo / Working](#demo)
+- [Features](#features)
 - [How it works](#working)
 - [Usage](#usage)
 - [Getting Started](#getting_started)
 - [Deploying your own bot](#deployment)
-- [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
+- [Security Guidelines](#security)
+- [Screenshots](#screenshots)
+- [FAQ](#faq)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [Community](#community)
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgement)
+
+---
 
 ## 🧐 About <a name = "about"></a>
 
 NeuroChatting is a Python-based Telegram bot designed to bring the power of AI into group conversations. By leveraging Telethon for session management and OpenAI's ChatGPT for generating responses, this bot offers seamless and intelligent interaction in Telegram groups.
 
-Key Features:
-- Uses `.session` and `.json` Telethon session files for account management.
-- Automatically responds to group messages with AI-powered answers.
-- Handles multiple sessions and adapts responses to group conversations.
+---
 
 ## 🎥 Demo / Working <a name = "demo"></a>
 
 ![Working](https://media.giphy.com/media/20NLMBm0BkUOwNljwv/giphy.gif)
+
+---
+
+## 🌟 Features <a name = "features"></a>
+
+- 🌐 Intelligent group interaction using ChatGPT responses.
+- 🌀 Support for multiple Telegram accounts through `.session` and `.json` files.
+- ⚡ Customizable response tone and behavior.
+- 🔄 Automatic switching of accounts after a set number of messages.
+- 🛠️ Reaction modes: keyword-based or interval-based.
+- 📈 Scalable with Docker for easy deployment.
+
+---
 
 ## 💭 How it works <a name = "working"></a>
 
@@ -55,6 +71,8 @@ Key Features:
 2. **Message Listening**: The bot listens to incoming messages in Telegram groups.
 3. **AI Responses**: Upon receiving a message, it sends the content to the OpenAI API (ChatGPT) and generates an intelligent response.
 4. **Message Sending**: The bot replies directly in the group, ensuring smooth and real-time interaction.
+
+---
 
 ## 🎈 Usage <a name = "usage"></a>
 
@@ -64,11 +82,13 @@ To use the bot:
 
 ### Example:
 
-Group Message:
+**Group Message**:  
 > Can anyone explain how to use AI in Python?
 
-Bot Reply:
+**Bot Reply**:  
 > Sure! AI in Python can be implemented using libraries like TensorFlow, PyTorch, or pre-built APIs like OpenAI's GPT. Let me know if you'd like a detailed example!
+
+---
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
@@ -84,10 +104,11 @@ Follow these steps to get the bot running locally.
 
 1. Clone this repository:
 
-   ```bash
-   git clone https://github.com/atljh/NeuroChatting.git
-   cd NeuroChatting 
-   ```
+    ```bash
+    git clone https://github.com/atljh/NeuroChatting.git
+    cd NeuroChatting 
+    ```
+
 2. Install the dependencies:
 
     ```bash
@@ -95,46 +116,114 @@ Follow these steps to get the bot running locally.
     poetry install
     ```
 
-3. Create a config.yaml file based on config-sample.yaml and add your credentials:
-    ```yaml
-      api:
-        openai_api_key: "your_openai_key"
-        chat_gpt_model: "gpt-3.5-turbo"
-      settings:
-        prompt_tone: "friendly"
-        join_delay: 10-30
-        send_message_delay: 15-30
-        message_limit: 2
+3. Create a `config.yaml` file based on `config-sample.yaml` and add your credentials.
+
+4. Run the bot:
+
+    ```bash
+    python main.py
     ```
-Run the bot:
 
-    python bot.py
+---
 
-🚀 Deploying your own bot <a name = "deployment"></a>
+## 🚀 Deploying your own bot <a name = "deployment"></a>
 
 You can deploy the bot on a live server using platforms like Heroku, AWS, or Docker.
-Using Docker:
 
-    Build the Docker image:
+### Using Docker:
 
-docker build -t neurochatting .
+1. Build the Docker image:
 
-Run the container:
+    ```bash
+    docker build -t neurochatting .
+    ```
 
+2. Run the container:
+
+    ```bash
     docker run -d --env-file .env neurochatting
+    ```
 
-⛏️ Built Using <a name = "built_using"></a>
+---
 
-    Telethon - Telegram API Library
-    OpenAI API - AI for intelligent responses
-    Python - Programming Language
+## 🔒 Security Guidelines <a name = "security"></a>
 
-✍️ Authors <a name = "authors"></a>
+- Avoid using your personal Telegram accounts for testing. Create separate accounts.
+- Use proxies or VPNs to protect your IP if deploying in sensitive environments.
+- Regularly update the bot and its dependencies to minimize vulnerabilities.
+- Store sensitive data (API keys, session files) in secure locations or encrypted files.
 
-    @atljh - Creator & Maintainer
+---
 
-🎉 Acknowledgments <a name = "acknowledgement"></a>
+## 📸 Screenshots <a name = "screenshots"></a>
 
-    OpenAI for their amazing GPT API
-    Telethon for their robust Telegram API wrapper
-    Inspiration from various Telegram automation projects
+| Group Message                          | Bot Reply                          |
+|----------------------------------------|------------------------------------|
+| ![Group Message](https://i.imgur.com/example1.png) | ![Bot Reply](https://i.imgur.com/example2.png) |
+
+---
+
+## ❓ FAQ <a name = "faq"></a>
+
+### 1. Can I use this bot with my personal Telegram account?  
+It is recommended to create separate accounts for testing and deployment to avoid risks of bans.
+
+### 2. How can I add more accounts to the bot?  
+Simply place `.session` or `.json` files in the `sessions/` directory, and the bot will automatically detect them.
+
+### 3. Why am I getting account bans?  
+Excessive automation or aggressive actions might trigger Telegram's anti-spam measures. Follow the Security Guidelines section.
+
+---
+
+## 🛤️ Roadmap <a name = "roadmap"></a>
+
+- [x] Support for multiple accounts
+- [x] Integration with ChatGPT API
+- [ ] Web-based control panel for managing the bot
+- [ ] Enhanced response customization options
+- [ ] Multi-language support
+
+---
+
+## 🤝 Contributing <a name = "contributing"></a>
+
+We welcome contributions to NeuroChatting! To contribute:
+
+1. Fork the repository.  
+2. Create a new branch: `git checkout -b feature/your-feature-name`.  
+3. Commit your changes: `git commit -m 'Add your feature'`.  
+4. Push to the branch: `git push origin feature/your-feature-name`.  
+5. Submit a pull request.
+
+Please check our [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## 💬 Community <a name = "community"></a>
+
+Join our community to share ideas, report bugs, or collaborate:  
+
+- [GitHub Discussions](https://github.com/atljh/NeuroChatting/discussions)
+- [Telegram Support Group](https://t.me/yourgroup)
+
+---
+
+## ✍️ Authors <a name = "authors"></a>
+
+- **@atljh** - Creator & Maintainer
+
+---
+## ⚠️ Disclaimer <a name = "disclaimer"></a>
+
+NeuroChatting is intended for educational and informational purposes only. 
+
+- Use this bot responsibly and ensure compliance with Telegram's [Terms of Service](https://telegram.org/tos) and OpenAI's [Usage Policies](https://platform.openai.com/docs/usage-policies).
+- The creator is not liable for any misuse or potential violations resulting from improper use of this software.
+- Be aware that excessive or automated interactions on Telegram could lead to account restrictions or bans. Use caution when managing multiple sessions or performing high-frequency actions.
+
+## 🎉 Acknowledgments <a name = "acknowledgement"></a>
+
+- OpenAI for their amazing GPT API  
+- Telethon for their robust Telegram API wrapper  
+- Inspiration from various Telegram automation projects  
