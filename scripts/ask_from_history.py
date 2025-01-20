@@ -9,6 +9,7 @@ DEFAULT_HISTORY = {
     "1": "Без прокси",
 }
 
+
 def ask_from_history(prompt: str, console: Console, history_file: Path) -> str:
     json_data = {}
     if history_file.is_file():

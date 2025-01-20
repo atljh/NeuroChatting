@@ -1,14 +1,16 @@
 import sys
 import json
 import requests
-import subprocess 
+import subprocess
+
 
 def get_settings():
     try:
         with open("settings.json", "r") as f:
             return json.loads(f.read())
-    except:
+    except Exception:
         return {}
+
 
 def set_settings(data):
     with open("settings.json", "w") as f:

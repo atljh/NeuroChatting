@@ -3,7 +3,6 @@ import yaml
 from typing import Tuple
 from rich.text import Text
 from rich.panel import Panel
-from rich.console import Console
 from pydantic import BaseModel, Field, field_validator
 from src.logger import logger, console
 

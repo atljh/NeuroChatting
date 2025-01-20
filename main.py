@@ -1,10 +1,8 @@
 import asyncio
-from src.logger import console
 from src.starter import Starter
 from config import ConfigManager, print_config
 from src.thon.json_converter import JsonConverter
 from src.managers.file_manager import FileManager, groups
-from scripts.authorization import register_user
 
 
 async def run_starter(sessions_count, config):
@@ -26,5 +24,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # register_user()
     main()
