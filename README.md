@@ -95,8 +95,17 @@ Follow these steps to get the bot running locally.
     poetry install
     ```
 
-3. Create a config.yaml file based on config-sample.yaml and add your credentials
-
+3. Create a config.yaml file based on config-sample.yaml and add your credentials:
+    ```yaml
+      api:
+        openai_api_key: "your_openai_key"
+        chat_gpt_model: "gpt-3.5-turbo"
+      settings:
+        prompt_tone: "friendly"
+        join_delay: 10-30
+        send_message_delay: 15-30
+        message_limit: 2
+    ```
 Run the bot:
 
     python bot.py
