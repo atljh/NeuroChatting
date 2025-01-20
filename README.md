@@ -157,9 +157,7 @@ You can deploy the bot on a live server using platforms like Heroku, AWS, or Doc
 
 ## 📸 Screenshots <a name = "screenshots"></a>
 
-| Group Message                          | Bot Reply                          |
-|----------------------------------------|------------------------------------|
-| ![Group Message](https://i.imgur.com/example1.png) | ![Bot Reply](https://i.imgur.com/example2.png) |
+ ![Group Message](https://i.imgur.com/fsYP4HC.png)
 
 ---
 
@@ -169,7 +167,7 @@ You can deploy the bot on a live server using platforms like Heroku, AWS, or Doc
 It is recommended to create separate accounts for testing and deployment to avoid risks of bans.
 
 ### 2. How can I add more accounts to the bot?  
-Simply place `.session` or `.json` files in the `sessions/` directory, and the bot will automatically detect them.
+Simply place `.session` or `.json` files in the `accounts/` directory, and the bot will automatically detect them.
 
 ### 3. Why am I getting account bans?  
 Excessive automation or aggressive actions might trigger Telegram's anti-spam measures. Follow the Security Guidelines section.
