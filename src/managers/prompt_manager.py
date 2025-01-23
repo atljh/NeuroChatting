@@ -1,6 +1,6 @@
 from typing import List, Optional
 from config import Config
-from src.logger import logger, console
+from src.logger import console
 from src.managers.file_manager import FileManager
 
 
