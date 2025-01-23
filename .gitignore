@@ -3,7 +3,7 @@
 venv
 /logs
 logs.log
-/config.yaml
+config.yaml
 /groups.txt
 poetry.lock
 __pycache__

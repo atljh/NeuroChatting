@@ -51,7 +51,7 @@ class Config(BaseModel):
 
 class ConfigManager:
     @staticmethod
-    def load_config(config_file='config.yaml') -> Config:
+    def load_config(config_file='config/config.yaml') -> Config:
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_data = yaml.safe_load(f)

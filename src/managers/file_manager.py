@@ -9,7 +9,7 @@ class FileManager:
     """Class for file managment"""
     @staticmethod
     def read_groups(
-        file: str = 'groups.txt'
+        file: str = 'data/groups.txt'
     ) -> List[str] | None:
         try:
             with open(file, 'r', encoding='utf-8') as f:
@@ -29,7 +29,7 @@ class FileManager:
 
     @staticmethod
     def read_prompts(
-        file: str = 'prompts.txt'
+        file: str = 'data/prompts.txt'
     ) -> List[str] | None:
         prompts = []
         try:
@@ -49,7 +49,7 @@ class FileManager:
 
     @staticmethod
     def read_keywords(
-        file: str = 'key.txt'
+        file: str = 'data/key.txt'
     ) -> List[str] | None:
         keywords = []
         try:
@@ -69,7 +69,7 @@ class FileManager:
 
     @staticmethod
     def read_blacklist(
-        file: str = 'blacklist.txt'
+        file: str = 'data/blacklist.txt'
     ) -> Dict[str, List[str]]:
         """
         return
@@ -108,7 +108,7 @@ class FileManager:
     def add_to_blacklist(
         account_phone: str,
         group: str,
-        file: str = 'blacklist.txt'
+        file: str = 'data/blacklist.txt'
     ) -> bool:
         try:
             with open(file, 'a', encoding='utf-8') as f:
@@ -126,5 +126,5 @@ class FileManager:
             return False
 
 
-FileManager.read_prompts()
 groups = FileManager.read_groups()
+FileManager.read_prompts()
