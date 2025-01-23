@@ -25,19 +25,17 @@
 ## 📝 Table of Contents
 
 - [About](#about)
-- [Demo / Working](#demo)
 - [Features](#features)
 - [How it works](#working)
 - [Usage](#usage)
 - [Getting Started](#getting_started)
 - [Deploying your own bot](#deployment)
 - [Security Guidelines](#security)
-- [Screenshots](#screenshots)
 - [FAQ](#faq)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
-- [Community](#community)
 - [Authors](#authors)
+- [Disclaimer](#disclaimer)
 - [Acknowledgments](#acknowledgement)
 
 ---
@@ -45,12 +43,6 @@
 ## 🧐 About <a name = "about"></a>
 
 NeuroChatting is a Python-based Telegram bot designed to bring the power of AI into group conversations. By leveraging Telethon for session management and OpenAI's ChatGPT for generating responses, this bot offers seamless and intelligent interaction in Telegram groups.
-
----
-
-## 🎥 Demo / Working <a name = "demo"></a>
-
-![Working](https://media.giphy.com/media/20NLMBm0BkUOwNljwv/giphy.gif)
 
 ---
 
@@ -155,12 +147,6 @@ You can deploy the bot on a live server using platforms like Heroku, AWS, or Doc
 
 ---
 
-## 📸 Screenshots <a name = "screenshots"></a>
-
- ![Group Message](https://i.imgur.com/fsYP4HC.png)
-
----
-
 ## ❓ FAQ <a name = "faq"></a>
 
 ### 1. Can I use this bot with my personal Telegram account?  
@@ -173,6 +159,13 @@ Simply place `.session` or `.json` files in the `accounts/` directory, and the b
 Excessive automation or aggressive actions might trigger Telegram's anti-spam measures. Follow the Security Guidelines section.
 
 ---
+
+
+## 📸 Screenshots <a name = "screenshots"></a>
+
+ ![Group Message](https://i.imgur.com/fsYP4HC.png)
+---
+
 
 ## 🛤️ Roadmap <a name = "roadmap"></a>
 
@@ -198,20 +191,12 @@ Please check our [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 💬 Community <a name = "community"></a>
-
-Join our community to share ideas, report bugs, or collaborate:  
-
-- [GitHub Discussions](https://github.com/atljh/NeuroChatting/discussions)
-- [Telegram Support Group](https://t.me/yourgroup)
-
----
-
 ## ✍️ Authors <a name = "authors"></a>
 
 - **@atljh** - Creator & Maintainer
 
 ---
+
 ## ⚠️ Disclaimer <a name = "disclaimer"></a>
 
 NeuroChatting is intended for educational and informational purposes only. 
@@ -220,8 +205,10 @@ NeuroChatting is intended for educational and informational purposes only.
 - The creator is not liable for any misuse or potential violations resulting from improper use of this software.
 - Be aware that excessive or automated interactions on Telegram could lead to account restrictions or bans. Use caution when managing multiple sessions or performing high-frequency actions.
 
+---
+
 ## 🎉 Acknowledgments <a name = "acknowledgement"></a>
 
 - OpenAI for their amazing GPT API  
 - Telethon for their robust Telegram API wrapper  
-- Inspiration from various Telegram automation projects  
+- Inspiration from various Telegram automation projects
