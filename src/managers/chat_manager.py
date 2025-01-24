@@ -10,6 +10,7 @@ from telethon.errors import (
     UserDeactivatedBanError, MsgIdInvalidError
 )
 from src.logger import console, logger
+from src.chatgpt import ChatGPTClient
 from src.managers import BlackList, FileManager
 from src.managers.prompt_manager import PromptManager
 
@@ -44,11 +45,11 @@ class ChatManager:
         self.reaction_mode = config.reaction_mode
         self.keywords_file = config.keywords_file
         self.reaction_interval = config.reaction_interval
-        self._openai_client = None
         self._messages_count = 0
         self._monitoring_active = True
         self._event_handlers = {}
-        self._answer_manager = PromptManager(self.config)
+        self._prompt_manager = PromptManager(self.config)
+        self._chatgpt_client = ChatGPTClient(self.config)
         self._blacklist_manager = BlackList()
 
     @property
@@ -189,13 +190,16 @@ class ChatManager:
 
             if not should_react:
                 return
+
             chat = await event.get_chat()
             chat_title = getattr(chat, "title", "Unknown Chat")
             console.log(
                 f"Новое сообщение в группе {chat_title} ({group_link})",
                 style="blue"
             )
-            answer_text = await self._answer_manager.generate_answer(message_text)
+            prompt = await self._prompt_manager.generate_prompt(message_text)
+            answer_text = await self._chatgpt_client.generate_answer(prompt)
+
             await self.sleep_before_send_message()
 
             answer_status = await self.send_answer(
