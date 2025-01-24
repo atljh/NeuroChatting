@@ -11,3 +11,4 @@ dist
 *.session
 *.json
 *.txt
+.pytest_cache
