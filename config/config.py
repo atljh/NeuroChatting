@@ -37,7 +37,7 @@ class Config(BaseModel):
         description="Интервал сообщений для ответа (если режим inteval)"
     )
     keywords_file: str = Field(
-        default="key.txt",
+        default="data/key.txt",
         description="Файл с ключевыми словами (если режим keywords)"
     )
 
