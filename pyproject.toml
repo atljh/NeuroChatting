@@ -27,6 +27,7 @@ requests = "^2.32.3"
 PySocks = "^1.7.1"
 tooler = {git = "https://github.com/atljh/tools.git"}
 jsoner = {git = "https://github.com/atljh/jsoner.git"}
+pytest-asyncio = "^0.25.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
