@@ -79,6 +79,9 @@ class ConfigManager:
                     **config_data['api'],
                     **config_data['settings']
                 )
+        except FileNotFoundError:
+            console.log(f"Файл {config_file} не найден", style="red")
+            sys.exit(1)
         except Exception as e:
             console.log("Ошибка в конфиге", style="red")
             logger.error(f"Ошибка загрузки конфигурации: {e}")
