@@ -18,9 +18,9 @@ def run_script(script_path):
 
 def main():
     if platform.system() == "Windows":
-        script_path = "install.bat"
+        script_path = "install/install.bat"
     else:
-        script_path = "install.sh"
+        script_path = "install/install.sh"
 
     if os.path.exists(script_path):
         print(f"Запуск скрипта {script_path}...")
