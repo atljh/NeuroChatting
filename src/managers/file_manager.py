@@ -32,7 +32,7 @@ class FileManager:
             raise
 
     @staticmethod
-    def read_groups(file: str = 'data/groups.txt') -> List[str]:
+    def read_groups(file: str = 'groups.txt') -> List[str]:
         """
         Reads groups from a file.
 
@@ -52,7 +52,7 @@ class FileManager:
             return []
 
     @staticmethod
-    def read_prompts(file: str = 'data/prompts.txt') -> List[str]:
+    def read_prompts(file: str = 'prompts.txt') -> List[str]:
         """
         Reads prompts from a file.
 
@@ -72,7 +72,7 @@ class FileManager:
             return []
 
     @staticmethod
-    def read_keywords(file: str = 'data/key.txt') -> List[str]:
+    def read_keywords(file: str = 'key.txt') -> List[str]:
         """
         Reads keywords from a file.
 
@@ -92,7 +92,7 @@ class FileManager:
             return []
 
     @staticmethod
-    def read_blacklist(file: str = 'data/blacklist.txt') -> Dict[str, List[str]]:
+    def read_blacklist(file: str = 'blacklist.txt') -> Dict[str, List[str]]:
         """
         Reads the blacklist from a file.
 
@@ -120,7 +120,7 @@ class FileManager:
         return blacklist
 
     @staticmethod
-    def add_to_blacklist(account_phone: str, group: str, file: str = 'data/blacklist.txt') -> bool:
+    def add_to_blacklist(account_phone: str, group: str, file: str = 'blacklist.txt') -> bool:
         """
         Adds a group to the blacklist for a specific account.
 
