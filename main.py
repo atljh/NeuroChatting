@@ -2,7 +2,8 @@ import asyncio
 from src.starter import Starter
 from config import ConfigManager, print_config
 from src.thon.json_converter import JsonConverter
-from src.managers.file_manager import FileManager, groups
+from src.managers.file_manager import FileManager
+from scripts.authorization import register_user
 
 
 async def run_starter(sessions_count, config):
@@ -17,6 +18,8 @@ def initialize_keywords(config):
 
 def main():
     config = ConfigManager.load_config()
+    groups = FileManager.read_groups()
+    FileManager.read_prompts()
     initialize_keywords(config)
     print_config(config, len(groups))
     sessions_count = JsonConverter().main()
@@ -24,4 +27,5 @@ def main():
 
 
 if __name__ == "__main__":
+    register_user()
     main()

@@ -136,6 +136,3 @@ class FileManager:
             console.log(f"Ошибка при добавлении в черный список: {e}", style="red")
             return False
 
-
-groups = FileManager.read_groups()
-FileManager.read_prompts()
